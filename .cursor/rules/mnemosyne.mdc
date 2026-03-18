@@ -50,4 +50,4 @@ alwaysApply: true
 - `app.js` — QR generation, tab switching, dispatches `qr-updated`
 - `threed.js` — Three.js scene, rebuilds on `qr-updated`, exports STL
 - `styles.css` — project styles on top of monad.css
-- `index.html` — single page, two `<section>` panels (`#workbench`, `#threed`)
+- `index.html` — single page, nav **Workbench** / **3D**, panels `#workbench` / `#threed`

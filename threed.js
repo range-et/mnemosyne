@@ -1,5 +1,9 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js";
+import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js";
+import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
+import { SSAOPass } from "three/examples/jsm/postprocessing/SSAOPass.js";
 import {
   booleans, expansions, extrusions, geometries,
   hulls, measurements, primitives, text, transforms,
@@ -8,7 +12,7 @@ import { serialize } from "@jscad/stl-serializer";
 
 const { cuboid }             = primitives;
 const { hull }               = hulls;
-const { union }              = booleans;
+const { subtract, union }    = booleans;
 const { expand }             = expansions;
 const { extrudeLinear }      = extrusions;
 const { path2 }              = geometries;
@@ -29,6 +33,9 @@ const textSizeInput  = document.getElementById("td-text-size");
 const textSizeVal    = document.getElementById("td-text-size-val");
 const textRaiseInput = document.getElementById("td-text-raise");
 const textRaiseVal   = document.getElementById("td-text-raise-val");
+const lipEnableCb    = document.getElementById("td-lip-enable");
+const lipWidthInput  = document.getElementById("td-lip-width");
+const lipWidthVal    = document.getElementById("td-lip-width-val");
 const exportBtn      = document.getElementById("td-export");
 const notice         = document.getElementById("td-notice");
 const noticeIcon     = document.getElementById("td-notice-icon");
@@ -38,7 +45,9 @@ const noticeMsg      = document.getElementById("td-notice-msg");
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.toneMapping         = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.0;
+renderer.toneMappingExposure = 1.05;
+renderer.shadowMap.enabled   = true;
+renderer.shadowMap.type      = THREE.PCFSoftShadowMap;
 
 const scene  = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 5000);
@@ -54,6 +63,14 @@ const hemiLight  = new THREE.HemisphereLight(0xfff4e0, 0x334455, 0.55);
 // Strong key light from upper-right-front
 const keyLight   = new THREE.DirectionalLight(0xffffff, 1.8);
 keyLight.position.set(60, 100, 60);
+keyLight.castShadow = true;
+keyLight.shadow.mapSize.set(1024, 1024);
+keyLight.shadow.bias = -0.0002;
+const sh = 80;
+keyLight.shadow.camera.near = 0.5;
+keyLight.shadow.camera.far  = 400;
+keyLight.shadow.camera.left = keyLight.shadow.camera.bottom = -sh;
+keyLight.shadow.camera.right = keyLight.shadow.camera.top = sh;
 // Soft fill from the left
 const fillLight  = new THREE.DirectionalLight(0xfff0e8, 0.5);
 fillLight.position.set(-50, 40, 20);
@@ -62,7 +79,41 @@ const rimLight   = new THREE.DirectionalLight(0xccddff, 0.35);
 rimLight.position.set(0, -20, -60);
 scene.add(hemiLight, keyLight, fillLight, rimLight);
 
-const mat = new THREE.MeshStandardMaterial({ roughness: 0.55, metalness: 0.05 });
+const mat = new THREE.MeshStandardMaterial({
+  roughness: 0.5, metalness: 0.06, envMapIntensity: 0.85,
+});
+const matLip = new THREE.MeshStandardMaterial({
+  roughness: 0.72, metalness: 0.02, envMapIntensity: 0.5,
+});
+
+let composer = null;
+let ssaoPass   = null;
+
+function ensureComposer(w, h) {
+  if (!composer) {
+    composer = new EffectComposer(renderer);
+    composer.addPass(new RenderPass(scene, camera));
+    ssaoPass = new SSAOPass(scene, camera, w, h, 24);
+    ssaoPass.output       = SSAOPass.OUTPUT.Default;
+    ssaoPass.kernelRadius = 10;
+    ssaoPass.minDistance  = 0.0008;
+    ssaoPass.maxDistance  = 0.14;
+    composer.addPass(ssaoPass);
+    composer.addPass(new OutputPass());
+  }
+  const pr = Math.min(window.devicePixelRatio, 2);
+  composer.setPixelRatio(pr);
+  composer.setSize(w, h);
+  ssaoPass.setSize(w, h);
+}
+
+function lipPreviewColor() {
+  const c = new THREE.Color(readCSSVar("--strata-text-primary", "#e0e0e0"));
+  const L   = 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b;
+  if (L > 0.42) return c;
+  c.setScalar(0.11);
+  return c;
+}
 
 // ── State ─────────────────────────────────────────────────────────────────────
 let qrMatrix    = null;
@@ -116,6 +167,24 @@ function buildLabelTextJscad(input, size, raise, labelCenterY) {
   return translate([-cx, labelCenterY - cy, 0], solid);
 }
 
+/**
+ * Square ring along the inner edge of the quiet zone (just outside the n×n grid).
+ * Extrudes upward — recessed channel beside it is meant for paint fill.
+ */
+function buildInnerLipJscad(n, lipW, lipH) {
+  if (lipW <= 0.05 || lipH <= 0.05) return null;
+  const outer = translate([0, 0, lipH / 2], cuboid({ size: [n + 2 * lipW, n + 2 * lipW, lipH] }));
+  const inner = translate(
+    [0, 0, lipH / 2],
+    cuboid({ size: [Math.max(n - 0.02, 0.5), Math.max(n - 0.02, 0.5), lipH + 1] }),
+  );
+  try {
+    return subtract(outer, inner);
+  } catch {
+    return null;
+  }
+}
+
 // ── JSCAD → Three.js BufferGeometry ──────────────────────────────────────────
 
 function collectPositions(geom, out) {
@@ -152,7 +221,9 @@ function readCSSVar(name, fallback) {
 }
 
 function syncRendererBackground() {
-  renderer.setClearColor(new THREE.Color(readCSSVar("--strata-bg", "#121212")));
+  const bg = new THREE.Color(readCSSVar("--strata-bg", "#121212"));
+  renderer.setClearColor(bg);
+  scene.background = bg;
 }
 
 // ── Scene builder ─────────────────────────────────────────────────────────────
@@ -170,7 +241,9 @@ function rebuild() {
   const draftDeg      = parseFloat(draftInput.value);
   const baseThickness = parseFloat(baseInput.value);
   const textSizeMm    = parseFloat(textSizeInput.value);
-  const raise         = parseFloat(textRaiseInput.value);
+  const labelRaiseMm  = parseFloat(textRaiseInput.value);
+  const lipW          = lipEnableCb?.checked ? parseFloat(lipWidthInput?.value ?? 0.35) : 0;
+  const lipH          = h; // lip is always as tall as the module extrusions
 
   const n      = qrMatrix.length;
   const ms     = 1;
@@ -192,14 +265,28 @@ function rebuild() {
     cuboid({ size: [plateWX, plateWY, baseThickness] }),
   );
   jscadParts.push(baseJscad);
-  modelGroup.add(new THREE.Mesh(toBufferGeometry(baseJscad), mat));
+  const baseMesh = new THREE.Mesh(toBufferGeometry(baseJscad), mat);
+  baseMesh.castShadow = baseMesh.receiveShadow = true;
+  modelGroup.add(baseMesh);
+
+  // ── Inner lip (paint channel rim, outside n×n, does not cover modules) ──
+  if (lipW > 0 && lipH > 0) {
+    const lipJscad = buildInnerLipJscad(n * ms, lipW, lipH);
+    if (lipJscad) {
+      jscadParts.push(lipJscad);
+      matLip.color.copy(lipPreviewColor());
+      const lipMesh = new THREE.Mesh(toBufferGeometry(lipJscad), matLip);
+      lipMesh.castShadow = lipMesh.receiveShadow = true;
+      modelGroup.add(lipMesh);
+    }
+  }
 
   // ── QR modules ────────────────────────────────────────────────────────────
   const modGeoms = [];
   for (let row = 0; row < n; row++) {
     for (let col = 0; col < n; col++) {
-      const raise = invert ? !qrMatrix[row][col] : qrMatrix[row][col];
-      if (!raise) continue;
+      const cellRaised = invert ? !qrMatrix[row][col] : qrMatrix[row][col];
+      if (!cellRaised) continue;
       const cx = col * ms + ms / 2 - offset;
       const cy = row * ms + ms / 2 - offset;
       modGeoms.push(buildModuleJscad(cx, cy, ms, h, taper));
@@ -207,18 +294,21 @@ function rebuild() {
   }
   if (modGeoms.length > 0) {
     jscadParts.push(...modGeoms);
-    modelGroup.add(new THREE.Mesh(toBufferGeometry(modGeoms), mat));
+    const modMesh = new THREE.Mesh(toBufferGeometry(modGeoms), mat);
+    modMesh.castShadow = modMesh.receiveShadow = true;
+    modelGroup.add(modMesh);
   }
 
   // ── Label text (raised on top face of base plate, in the border area) ────
   if (labelText && lh > 0) {
     try {
-      // Place at Y− edge (Three.js Z+ = front of model, facing default camera)
       const labelCenterY = -(n / 2 + bw + lh / 2);
-      const textJscad = buildLabelTextJscad(labelText, textSizeMm, raise, labelCenterY);
+      const textJscad = buildLabelTextJscad(labelText, textSizeMm, labelRaiseMm, labelCenterY);
       if (textJscad) {
         jscadParts.push(textJscad);
-        modelGroup.add(new THREE.Mesh(toBufferGeometry(textJscad), mat));
+        const textMesh = new THREE.Mesh(toBufferGeometry(textJscad), mat);
+        textMesh.castShadow = textMesh.receiveShadow = true;
+        modelGroup.add(textMesh);
       }
     } catch (e) {
       console.warn("Label text geometry failed:", e);
@@ -255,6 +345,7 @@ function resizeRenderer() {
   renderer.setSize(w, h, false);
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
+  ensureComposer(w, h);
 }
 
 // ── Render loop ───────────────────────────────────────────────────────────────
@@ -268,7 +359,19 @@ function animate() {
   requestAnimationFrame(animate);
   if (!is3dVisible()) return;
   orbitControls.update();
-  renderer.render(scene, camera);
+  if (composer) {
+    try {
+      composer.render();
+    } catch (err) {
+      console.warn("Post-processing disabled:", err?.message ?? err);
+      composer.dispose?.();
+      composer = null;
+      ssaoPass = null;
+      renderer.render(scene, camera);
+    }
+  } else {
+    renderer.render(scene, camera);
+  }
 }
 animate();
 
@@ -321,6 +424,8 @@ wire(draftInput,     draftVal,     1, scheduleRebuild);
 wire(baseInput,      baseVal,      1, scheduleRebuild);
 wire(textSizeInput,  textSizeVal,  1, scheduleRebuild);
 wire(textRaiseInput, textRaiseVal, 1, scheduleRebuild);
+if (lipWidthInput && lipWidthVal) wire(lipWidthInput, lipWidthVal, 2, scheduleRebuild);
+lipEnableCb?.addEventListener("change", rebuild);
 
 invertCb.addEventListener("change", rebuild);
 exportBtn.addEventListener("click", exportSTL);
