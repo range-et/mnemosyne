@@ -1,0 +1,53 @@
+---
+description: Mnemosyne project conventions — Monad design system, Three.js canvas, tab switching
+alwaysApply: true
+---
+
+# Mnemosyne Project Rules
+
+## Stack
+- Vite 8, vanilla ES modules, no framework
+- `qrcode-generator` for QR matrix
+- **`@jscad/modeling`** for 3D geometry construction (hull, cuboid, vectorText, extrudeLinear, expand)
+- **`@jscad/stl-serializer`** for 3D-printing-ready STL export (always manifold)
+- Three.js for interactive 3D viewport (OrbitControls, MeshStandardMaterial, lighting)
+- Monad design system via `vendor/monad_system/build/monad.{css,js}` (git submodule)
+
+## Monad design system constraints
+- **No `border-radius`** on Atomos components
+- **No `box-shadow`** — use layered borders for depth
+- **No hardcoded hex** except `#fff` on the QR preview (scanner requires white)
+- **No gradients**, no opacity fades — transitions: `var(--threshold-fast)` = 80ms linear
+- Always use `--strata-*` tokens for colour/spacing, never raw CSS values
+- Available tiers: `monad-*` (layout), `atomos-*` (components), `threshold-*` (nav/transitions)
+- `threshold-nav` is `display:none` at ≤1056px — always include a `.threshold-toggle` hamburger in the header so `monad.js` can open it
+
+## Tab switching
+- Visibility is controlled with **inline `style.display`**, not the `hidden` attribute
+- `id` CSS selectors (specificity 1,0,0) beat `[hidden]` (0,1,0) — `hidden` attribute is silently ignored
+- `switchTab(id)` in `app.js` sets `panel.style.display = id === active ? "" : "none"`
+- Cross-tab communication uses `CustomEvent` on `document`: `qr-updated` (carries `boolean[][]` matrix or `null`), `tab-changed` (carries tab id string)
+
+## JSCAD geometry / STL rules
+- JSCAD is **Z-up**; Three.js is **Y-up**. Convert with: `(x, y, z)_jscad → (x, z, −y)_three` (rotation −90° around X, determinant +1, CCW winding preserved — no need to flip triangle order)
+- Build QR modules with `hull(bottomSlab, topSlab)` — two thin `cuboid`s at Z=0 and Z=h — draft angle emerges naturally from the top slab being smaller
+- **Never `union()` all modules together for display** — keep them as separate geom3 objects, merge only at the BufferGeometry level by concatenating raw position arrays (`collectPositions` loop)
+- For STL: `serialize({ binary: true }, ...jscadParts)` — pass spread array of geom3 objects; returns `[ArrayBuffer, ...]` → `new Blob(rawData, { type: 'model/stl' })`
+- Text pipeline: `vectorText → path2.fromPoints → expand (delta≈size*0.07) → extrudeLinear → union` → center → `mirrorX` → `translate` to underside of base plate
+- `mirrorX` on back text so it reads correctly when the tag is flipped around its vertical (Y) axis
+- `jscadParts` array is the single source of truth for export; `modelGroup` is derived purely for display
+
+## Three.js / canvas rules
+- **Give the canvas an explicit CSS `height` (e.g. `height: 460px`)** — never `flex:1` or `min-height` on a canvas whose `height` attribute Three.js is also setting; the attribute leaks into the intrinsic CSS size and causes runaway growth
+- `renderer.setSize(w, h, false)` — always pass `false` to avoid Three.js overwriting CSS dimensions
+- Read resize dimensions from `canvas.clientWidth / canvas.clientHeight`, NOT from `canvas.parentElement.clientHeight`
+- ResizeObserver must observe `canvas` directly (not a parent), with a `requestAnimationFrame` defer and a `lastW/lastH` guard to break the observer→setSize→layout→observer loop
+- On tab-show: double-rAF (`rAF(() => rAF(() => ...))`) before resizing + rebuilding, so the browser commits layout first
+- Render loop: check `panel.style.display !== "none"` (not `panel.hidden`) to gate rendering
+- Use `renderer.setClearColor(new THREE.Color(readCSSVar("--strata-bg")))` instead of `alpha:true` + CSS background — explicit is more reliable
+
+## File layout
+- `app.js` — QR generation, tab switching, dispatches `qr-updated`
+- `threed.js` — Three.js scene, rebuilds on `qr-updated`, exports STL
+- `styles.css` — project styles on top of monad.css
+- `index.html` — single page, two `<section>` panels (`#workbench`, `#threed`)

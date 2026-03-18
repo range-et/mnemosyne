@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Mnemosyne</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="./vendor/monad_system/build/monad.css" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="monad-header">
+      <button class="threshold-toggle" aria-label="Open navigation" aria-expanded="false">
+        <span class="threshold-toggle__bar"></span>
+        <span class="threshold-toggle__bar"></span>
+        <span class="threshold-toggle__bar"></span>
+      </button>
+      <span class="monad-header__name">Mnemosyne</span>
+      <nav class="threshold-nav">
+        <a href="#" id="tab-workbench" class="active">2D</a>
+        <a href="#" id="tab-3d">3D</a>
+      </nav>
+      <div class="monad-header__actions">
+        <button class="strata-toggle" data-mn-theme-toggle aria-label="Toggle theme">◑</button>
+      </div>
+    </header>
+
+    <main class="monad-content app-content">
+
+      <!-- ── Workbench Tab ─────────────────────────────────────────────── -->
+      <section id="workbench">
+
+        <section class="monad-grid app-grid" aria-label="QR generator workspace">
+          <article class="atomos-card monad-col-8 monad-col-md-full">
+            <div class="atomos-card__header">
+              <span class="atomos-card__title">Payload</span>
+            </div>
+            <div class="atomos-card__body">
+              <div class="atomos-field">
+                <label class="atomos-label" for="text-input">Payload</label>
+                <textarea
+                  id="text-input"
+                  class="atomos-textarea qr-textarea"
+                  placeholder="Paste instruction text here..."
+                  spellcheck="false"
+                ></textarea>
+              </div>
+
+              <div class="controls">
+                <div class="atomos-field">
+                  <label class="atomos-label" for="ecc-level">Error correction</label>
+                  <select id="ecc-level" class="atomos-select">
+                    <option value="L">L (max capacity)</option>
+                    <option value="M" selected>M (balanced)</option>
+                    <option value="Q">Q (high resilience)</option>
+                    <option value="H">H (highest resilience)</option>
+                  </select>
+                </div>
+
+                <div class="atomos-field">
+                  <label class="atomos-label" for="module-size">Module size (mm)</label>
+                  <input
+                    id="module-size"
+                    class="atomos-input"
+                    type="number"
+                    min="0.4"
+                    max="3"
+                    step="0.1"
+                    value="0.8"
+                  />
+                </div>
+              </div>
+
+              <hr class="td-divider" />
+
+              <div class="atomos-field">
+                <label class="atomos-label" for="label-text">Label text</label>
+                <input id="label-text" class="atomos-input" type="text" placeholder="e.g. mnemosyne.io" />
+              </div>
+
+              <div class="controls">
+                <div class="atomos-field">
+                  <label class="atomos-label" for="label-border">
+                    Quiet zone &mdash; <span id="label-border-val">4</span> cells
+                  </label>
+                  <input id="label-border" type="range" class="td-range" min="0" max="10" step="1" value="4" />
+                </div>
+                <div class="atomos-field">
+                  <label class="atomos-label" for="label-text-size">
+                    Text size &mdash; <span id="label-text-size-val">1.50</span>&times;
+                  </label>
+                  <input id="label-text-size" type="range" class="td-range" min="0.5" max="4" step="0.25" value="1.5" />
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <!-- Preview card — rendered LEFT via CSS order: -1 on .qr-preview-card -->
+          <article class="atomos-card monad-col-8 monad-col-md-full qr-preview-card">
+            <div class="atomos-card__header">
+              <span class="atomos-card__title">Preview</span>
+            </div>
+            <div class="atomos-card__body output-body">
+              <div id="qr-root" class="qr-root" aria-live="polite"></div>
+
+              <dl class="qr-stats">
+                <div><dt>Bytes</dt><dd id="bytes-used">—</dd></div>
+                <div><dt>Version</dt><dd id="qr-version">—</dd></div>
+                <div><dt>Modules</dt><dd id="module-count">—</dd></div>
+                <div class="qr-stats__full"><dt>Print</dt><dd id="print-size">—</dd></div>
+              </dl>
+
+              <div id="status-line" class="status-line atomos-notice atomos-notice--info">
+                <span class="atomos-notice__icon">i</span>
+                <div class="atomos-notice__body">
+                  <div class="atomos-notice__msg">Enter text to generate a code.</div>
+                </div>
+              </div>
+            </div>
+          </article>
+        </section>
+      </section>
+
+      <!-- ── 3D Tab ─────────────────────────────────────────────────────── -->
+      <section id="threed">
+
+        <section class="monad-grid app-grid" aria-label="3D QR workspace">
+
+          <!-- Three.js canvas -->
+          <article class="atomos-card monad-col-10 monad-col-md-full">
+            <div class="atomos-card__header">
+              <span class="atomos-card__title">3D preview</span>
+            </div>
+            <div class="atomos-card__body qr3d-body">
+              <canvas id="qr3d-canvas" class="qr3d-canvas"></canvas>
+              <p class="qr3d-hint">Drag to orbit &middot; Scroll to zoom &middot; Right-drag to pan</p>
+            </div>
+          </article>
+
+          <!-- Controls -->
+          <article class="atomos-card monad-col-6 monad-col-md-full">
+            <div class="atomos-card__header">
+              <span class="atomos-card__title">3D settings</span>
+            </div>
+            <div class="atomos-card__body td-controls">
+
+              <p class="td-group-label">Geometry</p>
+
+              <!-- Invert -->
+              <div class="atomos-field">
+                <label class="atomos-switch">
+                  <input type="checkbox" id="td-invert" />
+                  <span class="atomos-switch__track"></span>
+                  <span class="atomos-switch__label">Raise light modules (invert)</span>
+                </label>
+              </div>
+
+              <!-- Extrusion height -->
+              <div class="atomos-field">
+                <label class="atomos-label" for="td-height">
+                  Extrusion height &mdash; <span id="td-height-val">3.0</span> mm
+                </label>
+                <input id="td-height" type="range" class="td-range" min="1" max="20" step="0.5" value="3" />
+              </div>
+
+              <!-- Draft angle -->
+              <div class="atomos-field">
+                <label class="atomos-label" for="td-draft">
+                  Draft angle &mdash; <span id="td-draft-val">2.0</span>&deg;
+                </label>
+                <input id="td-draft" type="range" class="td-range" min="-15" max="15" step="0.5" value="2" />
+              </div>
+
+              <!-- Base thickness -->
+              <div class="atomos-field">
+                <label class="atomos-label" for="td-base">
+                  Base thickness &mdash; <span id="td-base-val">2.0</span> mm
+                </label>
+                <input id="td-base" type="range" class="td-range" min="0.5" max="5" step="0.5" value="2" />
+              </div>
+
+              <hr class="td-divider" />
+
+              <p class="td-group-label">Label <span style="font-weight:400;text-transform:none;letter-spacing:0">&mdash; text set in 2D tab</span></p>
+
+              <!-- Label text size (independent from 2D preview size) -->
+              <div class="atomos-field">
+                <label class="atomos-label" for="td-text-size">
+                  Label size &mdash; <span id="td-text-size-val">2.5</span> mm
+                </label>
+                <input id="td-text-size" type="range" class="td-range" min="0.5" max="8" step="0.25" value="2.5" />
+              </div>
+
+              <!-- Label raise height above base plate surface -->
+              <div class="atomos-field">
+                <label class="atomos-label" for="td-text-raise">
+                  Label raise &mdash; <span id="td-text-raise-val">0.4</span> mm
+                </label>
+                <input id="td-text-raise" type="range" class="td-range" min="0.1" max="1.5" step="0.1" value="0.4" />
+              </div>
+
+              <div class="td-actions">
+                <button id="td-export" class="atomos-btn atomos-btn--primary td-export-btn">
+                  Export STL
+                </button>
+              </div>
+
+              <div id="td-notice" class="atomos-notice atomos-notice--info td-notice" style="display:none">
+                <span class="atomos-notice__icon" id="td-notice-icon">i</span>
+                <div class="atomos-notice__body">
+                  <div id="td-notice-msg" class="atomos-notice__msg"></div>
+                </div>
+              </div>
+
+            </div>
+          </article>
+
+        </section>
+      </section>
+
+    </main>
+
+    <script type="module" src="./vendor/monad_system/build/monad.js"></script>
+    <script type="module" src="./app.js"></script>
+    <script type="module" src="./threed.js"></script>
+  </body>
+</html>
