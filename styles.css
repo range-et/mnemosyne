@@ -7,6 +7,9 @@
 /* ── Expo-out easing token (from motion reference) ──────────────────────────*/
 :root {
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* Override monad's Inter default with Instrument Sans throughout */
+  --font-sans: 'Instrument Sans', system-ui, sans-serif;
 }
 
 /* ── Base reset ──────────────────────────────────────────────────────────── */
@@ -17,34 +20,87 @@
 }
 
 body {
-  margin: 0;
-  font-family: 'Instrument Sans', system-ui, sans-serif;
   font-kerning: normal;
 }
 
+.monad-content {
+  min-height: 0;
+}
+
+/* ── Viewport lock ──────────────────────────────────────────────────────── */
+html, body {
+  height: 100%;
+  overflow: hidden;
+}
+body {
+  display: flex;
+  flex-direction: column;
+}
+.monad-header {
+  flex-shrink: 0;
+}
+
 /* ── App shell layout ────────────────────────────────────────────────────── */
+/* app-content fills remaining height — edge-to-edge, no padding */
 .app-content {
-  display: grid;
-  gap: var(--space-3);
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 /* ── Header: sharper, more deliberate name treatment ─────────────────────── */
 .monad-header__name {
-  font-family: 'Instrument Sans', system-ui, sans-serif;
   font-weight: 600;
   letter-spacing: -0.025em;
 }
 
+.threshold-nav {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+.threshold-nav a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.25rem;
+  padding: 0.2rem 0.55rem;
+  border: 1px solid var(--strata-border);
+  border-right: none;
+  font-size: var(--type-xs, 0.72rem);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--strata-text-secondary);
+  text-decoration: none;
+  transition: background-color 120ms var(--ease-out-expo), color 120ms var(--ease-out-expo), border-color 120ms var(--ease-out-expo);
+}
+
+.threshold-nav a:last-child {
+  border-right: 1px solid var(--strata-border);
+}
+
+.threshold-nav a:hover {
+  color: var(--strata-text-primary);
+}
+
+.threshold-nav a.active {
+  background: var(--strata-surface-hover, var(--strata-surface));
+  color: var(--strata-text-primary);
+}
+
 /* ── Card titles: tighter tracking, slightly heavier ─────────────────────── */
 .atomos-card__title {
-  font-family: 'Instrument Sans', system-ui, sans-serif;
   font-weight: 600;
   letter-spacing: -0.01em;
 }
 
 /* ── Form labels: precise, uppercase micro-type ──────────────────────────── */
 .atomos-label {
-  font-family: 'Instrument Sans', system-ui, sans-serif;
   font-size: var(--type-xs, 0.75rem);
   font-weight: 500;
   letter-spacing: 0.06em;
@@ -58,23 +114,26 @@ body {
   font-size: var(--type-sm);
 }
 
-/* ── Workbench tab layout ────────────────────────────────────────────────── */
-.app-grid {
-  gap: var(--space-3);
-}
-
-/* Visual trick: keep settings first in DOM (correct a11y tab order) but
-   render the preview card on the LEFT — same as 3D. The preview card carries
-   the .qr-preview-card marker class. */
-.qr-preview-card {
-  order: -1;
-}
-
-/* Textarea: taller breathing room for payload entry */
+/* Textarea: compact for flex layout */
 .qr-textarea {
-  min-height: 200px;
-  font-family: 'Instrument Sans', system-ui, sans-serif;
+  min-height: 80px;
   resize: vertical;
+}
+
+/* ── Card header flex layout ─────────────────────────────────────────────── */
+.atomos-card__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.atomos-card__actions {
+  margin-left: auto;
+  display: flex;
+  gap: var(--space-1);
+}
+
+.atomos-btn {
+  transition: background-color 120ms var(--ease-out-expo), border-color 120ms var(--ease-out-expo), color 120ms var(--ease-out-expo);
 }
 
 /* ── QR preview surface ──────────────────────────────────────────────────── */
@@ -101,6 +160,8 @@ body {
 .qr-root svg {
   display: block;
   max-width: 100%;
+  max-height: 100%;
+  width: auto;
   height: auto;
 }
 
@@ -205,11 +266,214 @@ body {
   border-color: var(--strata-error);
 }
 
-/* ── Tab panel wrappers ──────────────────────────────────────────────────── */
-#workbench,
-#threed {
-  display: grid;
-  gap: var(--space-3);
+/* ── Drawing field (views row) ──────────────────────────────────────────── */
+.drawing-field {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: row;
+  overflow: hidden;
+}
+
+.drawing-view {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  position: relative;
+  border-right: 1px solid var(--strata-border);
+}
+
+.drawing-view:last-child {
+  border-right: none;
+}
+
+.drawing-view--plan {
+  flex: 38;
+}
+
+.drawing-view--iso {
+  flex: 62;
+}
+
+.drawing-view__label {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--strata-text-secondary);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Cards inside drawing views fill their container */
+.drawing-view > .atomos-card {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  border: none; /* border provided by drawing-view */
+}
+
+/* Hide the card header — drawing-view__label replaces it */
+.drawing-view > .atomos-card > .atomos-card__header {
+  display: none;
+}
+
+.drawing-view .atomos-card__body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* QR preview surface grows to fill plan view */
+.drawing-view--plan .qr-root {
+  flex: 1;
+  min-height: 0;
+}
+
+/* 3D canvas fills iso view panel */
+.drawing-view--iso .qr3d-canvas {
+  flex: 1;
+  min-height: 0;
+}
+
+/* ── Spec strip ──────────────────────────────────────────────────────────── */
+.spec-strip {
+  flex-shrink: 0;
+  height: 200px;
+  display: flex;
+  flex-direction: row;
+  overflow-x: auto;
+  overflow-y: hidden;
+  border-top: 1px solid var(--strata-border);
+}
+
+.spec-col {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  min-width: 120px;
+  border-right: 1px solid var(--strata-border);
+  overflow: hidden;
+}
+
+.spec-col:last-child {
+  border-right: none;
+}
+
+.spec-col--payload    { flex: 2.5; min-width: 180px; }
+.spec-col--qr         { flex: 1;   min-width: 140px; }
+.spec-col--tag        { flex: 1.2; min-width: 160px; }
+.spec-col--3d         { flex: 1.2; min-width: 160px; }
+.spec-col--attachment { flex: 1;   min-width: 140px; }
+.spec-col--export     { flex: 1;   min-width: 130px; }
+.spec-col--history    { flex: 1;   min-width: 120px; }
+
+.spec-col__header {
+  flex-shrink: 0;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--strata-text-secondary);
+  background: var(--strata-surface);
+  border-bottom: 1px solid var(--strata-border);
+}
+
+.spec-col__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: hidden;
+  padding: var(--space-1) var(--space-2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.spec-col--history .spec-col__body {
+  overflow-y: auto;
+}
+
+/* Compact param-rows inside spec strip */
+.spec-strip .param-row {
+  padding-top: 2px;
+  padding-bottom: 2px;
+}
+
+.spec-strip .param-section {
+  margin-top: var(--space-1);
+  margin-bottom: 2px;
+}
+
+/* Payload textarea fills its column */
+.spec-col--payload .spec-col__body {
+  padding: 0;
+}
+
+.spec-col--payload .atomos-field {
+  flex: 1;
+  min-height: 0;
+  margin-bottom: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.spec-col--payload .qr-textarea {
+  flex: 1;
+  min-height: 0;
+  resize: none;
+  border-left: none;
+  border-right: none;
+  border-bottom: none;
+  border-top: none;
+  border-radius: 0;
+  height: 100%;
+}
+
+/* Export column */
+.spec-col--export .td-actions {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+  background: none;
+}
+
+.spec-col--export .td-export-btn {
+  width: 100%;
+}
+
+.spec-col--export .td-notice {
+  margin-top: var(--space-1);
+  font-size: 0.65rem;
+}
+
+.spec-col--export .td-guide {
+  margin-top: var(--space-1);
+  font-size: var(--type-xs);
+}
+
+.compact-field {
+  margin-bottom: var(--space-1);
+}
+
+.compact-input {
+  font-size: var(--type-sm);
+}
+
+.compact-switch {
+  gap: var(--space-1);
 }
 
 /* Tab entrance animation — content slides up 6px + fades in */
@@ -234,18 +498,24 @@ body {
   }
 }
 
-/* ── 3D tab ──────────────────────────────────────────────────────────────── */
+/* ── 3D panel ──────────────────────────────────────────────────────────────── */
 
-/* Canvas card body */
+/* Canvas card body — fills available height */
 .qr3d-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
   padding: 0;
 }
 
-/* Fixed explicit height — never flex:1 or min-height (causes renderer runaway) */
+/* Canvas fills its flex body */
 .qr3d-canvas {
   display: block;
+  flex: 1;
+  height: auto !important;
+  min-height: 150px;
   width: 100%;
-  height: 460px;
   background: var(--strata-bg);
   cursor: grab;
 }
@@ -311,6 +581,14 @@ body {
   margin-top: var(--space-1);
 }
 
+.td-actions--spaced {
+  padding-top: var(--space-2);
+  padding-bottom: var(--space-2);
+  margin-top: var(--space-2);
+  border-top: 1px solid var(--strata-border);
+  background: var(--strata-surface);
+}
+
 .td-export-btn {
   width: 100%;
   justify-content: center;
@@ -321,17 +599,151 @@ body {
   margin-top: var(--space-1);
 }
 
+/* ── Payload capacity meter ──────────────────────────────────────────────── */
+.payload-meter {
+  height: 3px;
+  background: var(--strata-border);
+  margin-top: -1px;  /* butt up against textarea bottom border */
+  position: relative;
+  overflow: hidden;
+}
+
+.payload-meter::after {
+  content: "";
+  position: absolute;
+  inset: 0 0 0 0;
+  width: var(--usage, 0%);
+  background: var(--strata-interactive);
+  transition: width 120ms var(--ease-out-expo, ease), background 200ms ease;
+}
+
+.payload-meter--warn::after  { background: var(--strata-warning,  #f59e0b); }
+.payload-meter--error::after { background: var(--strata-error,    #ef4444); }
+
+/* ── Compact param rows (replaces slider layout) ────────────────────────── */
+.param-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 5px 0;
+  border-bottom: 1px solid var(--strata-border);
+}
+.param-row:last-of-type {
+  border-bottom: none;
+}
+.param-label {
+  min-width: 0;
+  font-size: var(--type-xs, 0.72rem);
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--strata-text-secondary);
+  line-height: 1.3;
+}
+.param-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.param-select {
+  font-size: var(--type-xs);
+  padding: 2px 4px;
+  min-height: 1.75rem;
+}
+.param-input {
+  width: 66px;
+  text-align: right;
+  padding: 2px 4px;
+  min-height: 1.75rem;
+  font-size: var(--type-sm);
+  font-variant-numeric: tabular-nums;
+  border: 1px solid var(--strata-border);
+  background: var(--strata-input-bg, var(--strata-surface));
+  color: var(--strata-text-primary);
+  outline: none;
+}
+.param-input:focus {
+  border-color: var(--strata-interactive);
+}
+.param-unit {
+  font-size: var(--type-xs, 0.7rem);
+  color: var(--strata-text-secondary);
+  min-width: 22px;
+}
+/* Section headers within settings */
+.param-section {
+  font-size: var(--type-xs, 0.7rem);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--strata-text-primary);
+  margin: var(--space-3) 0 var(--space-1);
+  border-bottom: 1px solid var(--strata-border);
+  padding-bottom: 4px;
+}
+.param-section:first-child {
+  margin-top: var(--space-1);
+}
+
 /* ── Responsive ──────────────────────────────────────────────────────────── */
 @media (max-width: 860px) {
+  html, body {
+    height: auto;
+    overflow-y: auto;
+  }
+  .app-content {
+    overflow: visible;
+    height: auto;
+    padding: var(--space-2);
+  }
+  .drawing-field {
+    flex-direction: column;
+    overflow: visible;
+    height: auto;
+    min-height: 0;
+  }
+  .drawing-view {
+    border-right: none;
+    border-bottom: 1px solid var(--strata-border);
+    min-height: 240px;
+    height: 70vw;
+    max-height: 60vh;
+  }
+  .drawing-view:last-child {
+    border-bottom: none;
+  }
+  .spec-strip {
+    flex-direction: column;
+    height: auto;
+    overflow-x: hidden;
+    overflow-y: visible;
+    border-top: 1px solid var(--strata-border);
+  }
+  .spec-col {
+    flex-shrink: 1;
+    min-width: 0;
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid var(--strata-border);
+    height: auto;
+    overflow: visible;
+  }
+  .spec-col:last-child {
+    border-bottom: none;
+  }
+  .spec-col__body {
+    overflow-y: visible;
+    height: auto;
+  }
+  .spec-col--payload .qr-textarea {
+    min-height: 80px;
+    resize: vertical;
+    height: auto;
+  }
   .controls {
     flex-direction: column;
-  }
-
-  .qr-preview-card {
-    order: 0;  /* on small screens, natural DOM order is fine */
-  }
-
-  .qr3d-canvas {
-    height: 300px;
   }
 }

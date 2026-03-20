@@ -10,7 +10,7 @@ import {
 } from "@jscad/modeling";
 import { serialize } from "@jscad/stl-serializer";
 
-const { cuboid }             = primitives;
+const { cuboid, cylinder }   = primitives;
 const { hull }               = hulls;
 const { subtract, union }    = booleans;
 const { expand }             = expansions;
@@ -24,22 +24,66 @@ const { translate }          = transforms;
 const canvas         = document.getElementById("qr3d-canvas");
 const invertCb       = document.getElementById("td-invert");
 const heightInput    = document.getElementById("td-height");
-const heightVal      = document.getElementById("td-height-val");
 const draftInput     = document.getElementById("td-draft");
-const draftVal       = document.getElementById("td-draft-val");
 const baseInput      = document.getElementById("td-base");
-const baseVal        = document.getElementById("td-base-val");
 const textSizeInput  = document.getElementById("td-text-size");
-const textSizeVal    = document.getElementById("td-text-size-val");
 const textRaiseInput = document.getElementById("td-text-raise");
-const textRaiseVal   = document.getElementById("td-text-raise-val");
 const lipEnableCb    = document.getElementById("td-lip-enable");
 const lipWidthInput  = document.getElementById("td-lip-width");
-const lipWidthVal    = document.getElementById("td-lip-width-val");
-const exportBtn      = document.getElementById("td-export");
-const notice         = document.getElementById("td-notice");
-const noticeIcon     = document.getElementById("td-notice-icon");
-const noticeMsg      = document.getElementById("td-notice-msg");
+const gap1Input      = document.getElementById("td-gap1");
+const gap2Input      = document.getElementById("td-gap2");
+const exportBtn        = document.getElementById("td-export");
+const notice           = document.getElementById("td-notice");
+const noticeIcon       = document.getElementById("td-notice-icon");
+const noticeMsg        = document.getElementById("td-notice-msg");
+const attachmentSelect = document.getElementById("td-attachment");
+const keyringOpts      = document.getElementById("td-keyring-opts");
+const keyringRInput    = document.getElementById("td-keyring-r");
+const mountOpts        = document.getElementById("td-mount-opts");
+const mountRInput      = document.getElementById("td-mount-r");
+
+// ── 3D settings persistence ───────────────────────────────────────────────────
+function save3DSettings() {
+  const s = localStorage;
+  s.setItem("mn_3d_invert",    invertCb.checked     ? "1" : "0");
+  s.setItem("mn_3d_height",    heightInput.value);
+  s.setItem("mn_3d_draft",     draftInput.value);
+  s.setItem("mn_3d_base",      baseInput.value);
+  s.setItem("mn_3d_text_size", textSizeInput.value);
+  s.setItem("mn_3d_text_raise",textRaiseInput.value);
+  s.setItem("mn_3d_lip_enable",lipEnableCb?.checked  ? "1" : "0");
+  s.setItem("mn_3d_lip_width", lipWidthInput?.value ?? "0.35");
+  if (attachmentSelect) s.setItem("mn_3d_attach",   attachmentSelect.value);
+  if (keyringRInput)    s.setItem("mn_3d_keyring_r", keyringRInput.value);
+  if (mountRInput)      s.setItem("mn_3d_mount_r",   mountRInput.value);
+  s.setItem("mn_3d_gap1", gap1Input?.value ?? "1");
+  s.setItem("mn_3d_gap2", gap2Input?.value ?? "0.5");
+}
+
+function load3DSettings() {
+  const g = (k) => localStorage.getItem(k);
+  if (g("mn_3d_invert")    !== null) invertCb.checked       = g("mn_3d_invert")    === "1";
+  if (g("mn_3d_height")    !== null) heightInput.value      = g("mn_3d_height");
+  if (g("mn_3d_draft")     !== null) draftInput.value       = g("mn_3d_draft");
+  if (g("mn_3d_base")      !== null) baseInput.value        = g("mn_3d_base");
+  if (g("mn_3d_text_size") !== null) textSizeInput.value    = g("mn_3d_text_size");
+  if (g("mn_3d_text_raise")!== null) textRaiseInput.value   = g("mn_3d_text_raise");
+  if (lipEnableCb && g("mn_3d_lip_enable") !== null)
+    lipEnableCb.checked = g("mn_3d_lip_enable") === "1";
+  if (lipWidthInput && g("mn_3d_lip_width") !== null)
+    lipWidthInput.value = g("mn_3d_lip_width");
+  if (attachmentSelect && g("mn_3d_attach") !== null) {
+    attachmentSelect.value = g("mn_3d_attach");
+    // Show/hide attachment option panels
+    const v = attachmentSelect.value;
+    if (keyringOpts) keyringOpts.style.display = v === "keyring" ? "" : "none";
+    if (mountOpts)   mountOpts.style.display   = v === "mount"   ? "" : "none";
+  }
+  if (keyringRInput && g("mn_3d_keyring_r") !== null) keyringRInput.value = g("mn_3d_keyring_r");
+  if (mountRInput   && g("mn_3d_mount_r")   !== null) mountRInput.value   = g("mn_3d_mount_r");
+  if (gap1Input && g("mn_3d_gap1") !== null) gap1Input.value = g("mn_3d_gap1");
+  if (gap2Input && g("mn_3d_gap2") !== null) gap2Input.value = g("mn_3d_gap2");
+}
 
 // ── Three.js scene ────────────────────────────────────────────────────────────
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
@@ -86,6 +130,45 @@ const matLip = new THREE.MeshStandardMaterial({
   roughness: 0.72, metalness: 0.02, envMapIntensity: 0.5,
 });
 
+// Cartesian gizmo overlay (bottom-left): world X/Y/Z orientation while orbiting.
+const axesScene = new THREE.Scene();
+const axesCamera = new THREE.PerspectiveCamera(55, 1, 0.1, 10);
+const axesHelper = new THREE.AxesHelper(1.1);
+axesScene.add(axesHelper);
+
+function makeAxisLabelSprite(text, color) {
+  const c = document.createElement("canvas");
+  c.width = 64;
+  c.height = 64;
+  const ctx = c.getContext("2d");
+  ctx.clearRect(0, 0, c.width, c.height);
+  ctx.font = "700 42px Instrument Sans, system-ui, sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.strokeStyle = "rgba(0,0,0,0.35)";
+  ctx.lineWidth = 6;
+  ctx.strokeText(text, c.width / 2, c.height / 2 + 1);
+  ctx.fillStyle = color;
+  ctx.fillText(text, c.width / 2, c.height / 2 + 1);
+
+  const tex = new THREE.CanvasTexture(c);
+  tex.needsUpdate = true;
+  const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false, depthWrite: false });
+  const sprite = new THREE.Sprite(mat);
+  sprite.scale.set(0.34, 0.34, 0.34);
+  return sprite;
+}
+
+const xLabel = makeAxisLabelSprite("X", "#ef4444");
+const yLabel = makeAxisLabelSprite("Y", "#22c55e");
+const zLabel = makeAxisLabelSprite("Z", "#3b82f6");
+xLabel.position.set(1.28, 0, 0);
+yLabel.position.set(0, 1.28, 0);
+zLabel.position.set(0, 0, 1.28);
+axesScene.add(xLabel, yLabel, zLabel);
+
+const axesDir = new THREE.Vector3();
+
 let composer = null;
 let ssaoPass   = null;
 
@@ -123,6 +206,7 @@ let jscadParts  = [];
 let modelGroup  = null;
 let rebuildTimer = null;
 let lastMatrixN = -1;  // sentinel — used to gate camera reframe
+let lastSpan = -1;
 
 // ── JSCAD geometry builders ───────────────────────────────────────────────────
 
@@ -168,27 +252,24 @@ function buildLabelTextJscad(input, size, raise, labelCenterY) {
 }
 
 /**
- * Square ring along the inner edge of the quiet zone (just outside the n×n grid).
- * Extrudes upward — recessed channel beside it is meant for paint fill.
+ * Rectangular lip ring sitting INSIDE the quiet zone.
+ * Structure: QR code → GAP1 → lip inner edge → lip → lip outer edge → GAP2 → hole.
+ * innerHalf = half-width of the inner opening (lip inner edge).
+ * lipW      = wall thickness of the lip ring in mm.
+ * lipH      = height of the lip ring in mm.
  */
-function buildInnerLipJscad(n, lipW, lipH) {
+function buildInnerLipJscad(innerHalf, lipW, lipH) {
   if (lipW <= 0.05 || lipH <= 0.05) return null;
-  const outer = translate([0, 0, lipH / 2], cuboid({ size: [n + 2 * lipW, n + 2 * lipW, lipH] }));
-  const inner = translate(
-    [0, 0, lipH / 2],
-    cuboid({ size: [Math.max(n - 0.02, 0.5), Math.max(n - 0.02, 0.5), lipH + 1] }),
-  );
-  try {
-    return subtract(outer, inner);
-  } catch {
-    return null;
-  }
+  const outerHalf = innerHalf + lipW;
+  const outer = translate([0, 0, lipH / 2], cuboid({ size: [outerHalf * 2, outerHalf * 2, lipH] }));
+  const inner = translate([0, 0, lipH / 2], cuboid({ size: [Math.max(innerHalf * 2 - 0.02, 0.5), Math.max(innerHalf * 2 - 0.02, 0.5), lipH + 1] }));
+  try { return subtract(outer, inner); } catch { return null; }
 }
 
 // ── JSCAD → Three.js BufferGeometry ──────────────────────────────────────────
 
 function collectPositions(geom, out) {
-  for (const poly of geom.polygons) {
+  for (const poly of geometries.geom3.toPolygons(geom)) {
     const vs = poly.vertices;
     // Fan-triangulate; CCW winding preserved by (x,y,z)→(x,z,−y) rotation
     for (let i = 1; i < vs.length - 1; i++) {
@@ -231,6 +312,12 @@ function syncRendererBackground() {
 function rebuild() {
   if (modelGroup) { disposeGroup(modelGroup); modelGroup = null; }
   jscadParts = [];
+
+  // Hide dims and stale notices before early-out or new checks
+  const dimsEl = document.getElementById("td-dims");
+  if (dimsEl) dimsEl.style.display = "none";
+  notice.style.display = "none";
+
   if (!qrMatrix) return;
 
   mat.color.set(readCSSVar("--strata-text-primary", "#e0e0e0"));
@@ -241,16 +328,36 @@ function rebuild() {
   const draftDeg      = parseFloat(draftInput.value);
   const baseThickness = parseFloat(baseInput.value);
   const textSizeMm    = parseFloat(textSizeInput.value);
-  const labelRaiseMm  = parseFloat(textRaiseInput.value);
+  const labelRaiseMm  = Math.min(parseFloat(textRaiseInput.value), h);
   const lipW          = lipEnableCb?.checked ? parseFloat(lipWidthInput?.value ?? 0.35) : 0;
   const lipH          = h; // lip is always as tall as the module extrusions
+
+  // ── P1.5 Printability warnings ────────────────────────────────────────────
+  if (lipW > 0 && lipW < 0.4) {
+    showNotice("Lip width below 0.4 mm may not print on a 0.4 mm nozzle. Try 0.4 mm or wider, or disable the lip.", "warning");
+  } else if (draftDeg < -3) {
+    showNotice("Negative draft creates an undercut that may not print on FDM without supports.", "warning");
+  } else if (draftDeg > 10) {
+    showNotice("Draft over 10° may cause adjacent module bases to merge, reducing scan contrast.", "warning");
+  }
 
   const n      = qrMatrix.length;
   const ms     = 1;
   const offset = (n * ms) / 2;
-  const bw     = borderCells * ms;                          // border width (mm)
   const lh     = labelText ? textSizeMm * 2.0 : 0;         // label area height (mm)
   const taper  = h * Math.tan((draftDeg * Math.PI) / 180); // can be negative
+
+  const GAP1 = parseFloat(gap1Input?.value ?? 1.0); // mm inner clearance between QR modules and lip inner edge
+  const GAP2 = parseFloat(gap2Input?.value ?? 0.5); // mm clearance between lip outer edge and hole edge
+
+  // Auto-calculate quiet zone border from component parts.
+  // Minimum 4 cells for QR scan reliability; expands to fit lip + gaps + hole.
+  const attachMode = attachmentSelect ? attachmentSelect.value : "none";
+  const rawHoleR = attachMode === "keyring" ? parseFloat(keyringRInput?.value ?? 2.0)
+                 : attachMode === "mount"   ? parseFloat(mountRInput?.value   ?? 1.5)
+                 : 0;
+  const requiredBorderMm = Math.max(4, GAP1 + lipW + GAP2 + 2 * rawHoleR + 0.5);
+  const bw = Math.ceil(requiredBorderMm);  // ms=1, so cells == mm
 
   modelGroup = new THREE.Group();
 
@@ -260,18 +367,53 @@ function rebuild() {
   const plateWY  = n * ms + 2 * bw + lh;
   const plateCY  = -lh / 2;  // shift centre toward label side
 
-  const baseJscad = translate(
+  let baseJscad = translate(
     [0, plateCY, -baseThickness / 2],
     cuboid({ size: [plateWX, plateWY, baseThickness] }),
   );
+
+  // ── P0.3 Attachment holes ─────────────────────────────────────────────────
+  // Border (bw) is auto-sized to always fit the requested hole radius, so
+  // safeHoleR just returns the requested value clamped to a physical minimum.
+  function safeHoleR(requested) {
+    return Math.max(0.5, requested);
+  }
+
+  if (attachMode === "keyring") {
+    const holeR   = safeHoleR(keyringRInput ? parseFloat(keyringRInput.value) : 2.0);
+    const holeDist = (n * ms) / 2 + GAP1 + lipW + GAP2 + holeR;
+    const holeCyl = translate(
+      [0, holeDist, -baseThickness / 2],
+      cylinder({ radius: holeR, height: baseThickness + 1, segments: 32 }),
+    );
+    try { baseJscad = subtract(baseJscad, holeCyl); } catch (e) {
+      console.warn("Keyring hole subtraction failed:", e);
+    }
+  } else if (attachMode === "mount") {
+    const holeR   = safeHoleR(mountRInput ? parseFloat(mountRInput.value) : 1.5);
+    const holeDist = (n * ms) / 2 + GAP1 + lipW + GAP2 + holeR;
+    const holeCyl1 = translate(
+      [0, +holeDist, -baseThickness / 2],
+      cylinder({ radius: holeR, height: baseThickness + 1, segments: 32 }),
+    );
+    const holeCyl2 = translate(
+      [0, -holeDist, -baseThickness / 2],
+      cylinder({ radius: holeR, height: baseThickness + 1, segments: 32 }),
+    );
+    try { baseJscad = subtract(baseJscad, holeCyl1, holeCyl2); } catch (e) {
+      console.warn("Mounting holes subtraction failed:", e);
+    }
+  }
+
   jscadParts.push(baseJscad);
   const baseMesh = new THREE.Mesh(toBufferGeometry(baseJscad), mat);
   baseMesh.castShadow = baseMesh.receiveShadow = true;
   modelGroup.add(baseMesh);
 
-  // ── Inner lip (paint channel rim, outside n×n, does not cover modules) ──
+  // ── Inner lip (paint dam inside quiet zone: QR → GAP1 → lip) ────────────
   if (lipW > 0 && lipH > 0) {
-    const lipJscad = buildInnerLipJscad(n * ms, lipW, lipH);
+    const lipHalfInner = (n * ms) / 2 + GAP1;
+    const lipJscad = buildInnerLipJscad(lipHalfInner, lipW, lipH);
     if (lipJscad) {
       jscadParts.push(lipJscad);
       matLip.color.copy(lipPreviewColor());
@@ -317,13 +459,27 @@ function rebuild() {
 
   scene.add(modelGroup);
 
-  // ── Camera — only reframe when the QR version (matrix size) changes ──────
-  // Preserves orbit state between parameter tweaks.
-  if (n !== lastMatrixN) {
+  // ── P1.6 Physical dimensions readout ─────────────────────────────────────
+  if (dimsEl) {
+    const W = (plateWX).toFixed(1);
+    const H = (plateWY).toFixed(1);
+    const D = (h + baseThickness).toFixed(1);
+    dimsEl.textContent = `W ${W} × H ${H} × D ${D} mm`;
+    dimsEl.style.display = "";
+  }
+
+  // ── Camera — reframe when QR version changes or plate size changes significantly ──
+  // Preserves orbit state between minor parameter tweaks.
+  const currentSpan = Math.max(plateWX, plateWY, h + baseThickness);
+  if (n !== lastMatrixN || Math.abs(currentSpan - lastSpan) > 8) {
     lastMatrixN = n;
-    const span = Math.max(plateWX, plateWY, h + baseThickness);
-    camera.position.set(span * 0.7, span * 0.65, span * 1.1);
-    orbitControls.target.set(0, (h - baseThickness) / 2, 0);
+    lastSpan = currentSpan;
+    const span = currentSpan;
+    // Position camera slightly in front and moderately above so the label
+    // strip (near / positive-Z side) reads clearly at the visual bottom rather
+    // than appearing centrally in a steep top-down view.
+    camera.position.set(span * 0.1, span * 1.6, span * 0.9);
+    orbitControls.target.set(0, h / 2, 0);
     orbitControls.update();
   }
 }
@@ -348,11 +504,37 @@ function resizeRenderer() {
   ensureComposer(w, h);
 }
 
+function renderAxesOverlay() {
+  const fullW = canvas.clientWidth;
+  const fullH = canvas.clientHeight;
+  if (fullW <= 0 || fullH <= 0) return;
+
+  const size = Math.max(80, Math.round(Math.min(fullW, fullH) * 0.16));
+  const margin = 12;
+  const x = margin;
+  const y = margin;
+
+  axesDir.copy(camera.position).sub(orbitControls.target);
+  if (axesDir.lengthSq() < 1e-6) axesDir.set(1, 1, 1);
+
+  axesCamera.position.copy(axesDir).setLength(2.9);
+  axesCamera.lookAt(0, 0, 0);
+  axesCamera.aspect = 1;
+  axesCamera.updateProjectionMatrix();
+
+  renderer.clearDepth();
+  renderer.setScissorTest(true);
+  renderer.setScissor(x, y, size, size);
+  renderer.setViewport(x, y, size, size);
+  renderer.render(axesScene, axesCamera);
+  renderer.setScissorTest(false);
+  renderer.setViewport(0, 0, fullW, fullH);
+}
+
 // ── Render loop ───────────────────────────────────────────────────────────────
 
 function is3dVisible() {
-  const panel = document.getElementById("threed");
-  return panel && panel.style.display !== "none" && !document.hidden;
+  return !document.hidden && canvas.offsetWidth > 0;
 }
 
 function animate() {
@@ -372,10 +554,28 @@ function animate() {
   } else {
     renderer.render(scene, camera);
   }
+  renderAxesOverlay();
 }
 animate();
 
 // ── STL export ────────────────────────────────────────────────────────────────
+
+function stlFilename() {
+  if (labelText) {
+    const slug = labelText
+      .toLowerCase()
+      .replace(/[\s\W]+/g, "-")   // spaces and non-alphanumeric → hyphen
+      .replace(/[^a-z0-9-]/g, "") // strip anything left that isn't alphanumeric or hyphen
+      .replace(/^-+|-+$/g, "")    // trim leading/trailing hyphens
+      .slice(0, 30);
+    if (slug) return `mnemosyne-${slug}.stl`;
+  }
+  const now = new Date();
+  const y   = now.getFullYear();
+  const m   = String(now.getMonth() + 1).padStart(2, "0");
+  const d   = String(now.getDate()).padStart(2, "0");
+  return `mnemosyne-${y}${m}${d}.stl`;
+}
 
 function exportSTL() {
   if (!jscadParts.length) {
@@ -388,7 +588,7 @@ function exportSTL() {
     const url     = URL.createObjectURL(blob);
     const a       = document.createElement("a");
     a.href        = url;
-    a.download    = "qr-code.stl";
+    a.download    = stlFilename();
     a.click();
     URL.revokeObjectURL(url);
     showNotice("STL exported.", "success");
@@ -409,26 +609,63 @@ function showNotice(msg, type = "info") {
   notice.className       = `atomos-notice atomos-notice--${type} td-notice`;
 }
 
-// ── Slider sync helper ────────────────────────────────────────────────────────
+// ── Input sync helper ─────────────────────────────────────────────────────────
 
-function wire(input, display, decimals, onChange) {
-  const sync = () => { display.textContent = parseFloat(input.value).toFixed(decimals); };
-  input.addEventListener("input", () => { sync(); onChange(); });
-  sync();
+function wire(input, onChange) {
+  input.addEventListener("input", onChange);
+}
+
+// ── Save+rebuild wrappers ─────────────────────────────────────────────────────
+
+function scheduleRebuildAndSave() {
+  save3DSettings();
+  scheduleRebuild();
+}
+function rebuildAndSave() {
+  save3DSettings();
+  rebuild();
 }
 
 // ── Event wiring ──────────────────────────────────────────────────────────────
 
-wire(heightInput,    heightVal,    1, scheduleRebuild);
-wire(draftInput,     draftVal,     1, scheduleRebuild);
-wire(baseInput,      baseVal,      1, scheduleRebuild);
-wire(textSizeInput,  textSizeVal,  1, scheduleRebuild);
-wire(textRaiseInput, textRaiseVal, 1, scheduleRebuild);
-if (lipWidthInput && lipWidthVal) wire(lipWidthInput, lipWidthVal, 2, scheduleRebuild);
-lipEnableCb?.addEventListener("change", rebuild);
+wire(heightInput,    scheduleRebuildAndSave);
+wire(draftInput,     scheduleRebuildAndSave);
+wire(baseInput,      scheduleRebuildAndSave);
+wire(textSizeInput,  scheduleRebuildAndSave);
+wire(textRaiseInput, scheduleRebuildAndSave);
+if (lipWidthInput) wire(lipWidthInput, scheduleRebuildAndSave);
+lipEnableCb?.addEventListener("change", rebuildAndSave);
+if (gap1Input) wire(gap1Input, scheduleRebuildAndSave);
+if (gap2Input) wire(gap2Input, scheduleRebuildAndSave);
 
-invertCb.addEventListener("change", rebuild);
+// Changing gap1 or gap2 also affects the 2D SVG lip position — trigger app.js update
+gap1Input?.addEventListener("input", () => {
+  document.getElementById("td-lip-width")?.dispatchEvent(new Event("input"));
+});
+gap2Input?.addEventListener("input", () => {
+  document.getElementById("td-lip-width")?.dispatchEvent(new Event("input"));
+});
+
+// P0.3 — attachment mode
+if (attachmentSelect) {
+  attachmentSelect.addEventListener("change", () => {
+    const v = attachmentSelect.value;
+    if (keyringOpts) keyringOpts.style.display = v === "keyring" ? "" : "none";
+    if (mountOpts)   mountOpts.style.display   = v === "mount"   ? "" : "none";
+    rebuildAndSave();
+  });
+}
+if (keyringRInput) wire(keyringRInput, scheduleRebuildAndSave);
+if (mountRInput)   wire(mountRInput, scheduleRebuildAndSave);
+
+invertCb.addEventListener("change", rebuildAndSave);
 exportBtn.addEventListener("click", exportSTL);
+
+// ── Fit camera button (Change 6) ──────────────────────────────────────────────
+document.getElementById("td-fit-camera")?.addEventListener("click", () => {
+  lastMatrixN = -1; // force camera reframe on next rebuild
+  scheduleRebuild();
+});
 
 // Label text + border dimensions arrive from app.js via qr-updated
 document.addEventListener("qr-updated", (e) => {
@@ -446,17 +683,8 @@ document.addEventListener("qr-updated", (e) => {
   rebuild();
 });
 
-document.addEventListener("tab-changed", (e) => {
-  if (e.detail !== "3d") return;
-  requestAnimationFrame(() => requestAnimationFrame(() => {
-    lastW = 0; lastH = 0;
-    syncRendererBackground();
-    resizeRenderer();
-    rebuild();
-  }));
-});
-
 const ro = new ResizeObserver(() => requestAnimationFrame(resizeRenderer));
 ro.observe(canvas);
 
+load3DSettings();
 syncRendererBackground();
