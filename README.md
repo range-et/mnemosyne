@@ -1,5 +1,7 @@
 # Offline Text QR Workshop
 
+**[Try it live](https://range-et.github.io/mnemosyne/)**
+
 Minimal website (native HTML/CSS/JS) that turns text into scannable QR codes for fabrication workflows.
 
 ## What this app does
