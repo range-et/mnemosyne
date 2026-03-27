@@ -688,3 +688,10 @@ ro.observe(canvas);
 
 load3DSettings();
 syncRendererBackground();
+
+// ── Theme sync — re-color scene when dark/light mode toggles ──────────────────
+new MutationObserver(() => {
+  syncRendererBackground();
+  mat.color.set(readCSSVar("--strata-text-primary", "#e0e0e0"));
+  matLip.color.copy(lipPreviewColor());
+}).observe(document.documentElement, { attributes: true, attributeFilter: ["data-strata"] });

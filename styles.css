@@ -10,6 +10,18 @@
 
   /* Override monad's Inter default with Instrument Sans throughout */
   --font-sans: 'Instrument Sans', system-ui, sans-serif;
+
+  /* Monad textures use black fill — override for dark mode with white */
+  --strata-texture-dot: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12'><circle cx='6.0' cy='6.0' r='1.5' fill='white' fill-opacity='0.12'/></svg>");
+  --strata-texture-hatch-h: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'><line x1='0' y1='4.0' x2='8' y2='4.0' stroke='white' stroke-width='1' stroke-opacity='0.08'/></svg>");
+  --strata-texture-hatch-fwd: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10'><line x1='0' y1='10' x2='10' y2='0' stroke='white' stroke-width='1' stroke-opacity='0.08'/><line x1='-10' y1='10' x2='10' y2='-10' stroke='white' stroke-width='1' stroke-opacity='0.08'/><line x1='0' y1='20' x2='20' y2='0' stroke='white' stroke-width='1' stroke-opacity='0.08'/></svg>");
+}
+
+/* In light mode, use the official monad tokens (black fill) with tuned opacity */
+[data-strata="light"] {
+  --strata-texture-dot: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12'><circle cx='6.0' cy='6.0' r='1.5' fill='black' fill-opacity='0.1'/></svg>");
+  --strata-texture-hatch-h: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'><line x1='0' y1='4.0' x2='8' y2='4.0' stroke='black' stroke-width='1' stroke-opacity='0.06'/></svg>");
+  --strata-texture-hatch-fwd: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10'><line x1='0' y1='10' x2='10' y2='0' stroke='black' stroke-width='1' stroke-opacity='0.06'/><line x1='-10' y1='10' x2='10' y2='-10' stroke='black' stroke-width='1' stroke-opacity='0.06'/><line x1='0' y1='20' x2='20' y2='0' stroke='black' stroke-width='1' stroke-opacity='0.06'/></svg>");
 }
 
 /* ── Base reset ──────────────────────────────────────────────────────────── */
@@ -54,7 +66,21 @@ body {
 /* ── Header: sharper, more deliberate name treatment ─────────────────────── */
 .monad-header__name {
   font-weight: 600;
-  letter-spacing: -0.025em;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  font-size: var(--type-sm);
+}
+
+.header-version {
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  color: var(--strata-text-disabled);
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border: 1px solid var(--strata-border-subtle);
+  margin-left: var(--space-1);
 }
 
 .threshold-nav {
@@ -133,12 +159,21 @@ body {
 }
 
 .atomos-btn {
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+  font-size: 0.6875rem;
   transition: background-color 120ms var(--ease-out-expo), border-color 120ms var(--ease-out-expo), color 120ms var(--ease-out-expo);
+}
+
+.atomos-btn--ghost {
+  font-family: var(--font-mono);
+  letter-spacing: 0.04em;
 }
 
 /* ── QR preview surface ──────────────────────────────────────────────────── */
 .qr-root {
-  background: #fff;  /* scanner-safe: only hardcoded hex allowed by rule */
+  background: var(--strata-bg);
   border: 1px solid var(--strata-border);
   display: grid;
   place-items: center;
@@ -214,18 +249,20 @@ body {
 }
 
 .qr-stats dt {
-  margin: 0 0 2px;
-  font-size: var(--type-xs, 0.7rem);
-  font-weight: 500;
-  letter-spacing: 0.06em;
+  margin: 0 0 1px;
+  font-family: var(--font-mono);
+  font-size: 0.5625rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--strata-text-secondary);
+  color: var(--strata-text-disabled);
 }
 
 .qr-stats dd {
   margin: 0;
+  font-family: var(--font-mono);
   font-size: var(--type-sm);
-  font-weight: 500;
+  font-weight: 600;
   color: var(--strata-text-primary);
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.01em;
@@ -283,6 +320,8 @@ body {
   overflow: hidden;
   position: relative;
   border-right: 1px solid var(--strata-border);
+  background-image: var(--strata-texture-dot);
+  background-repeat: repeat;
 }
 
 .drawing-view:last-child {
@@ -301,13 +340,25 @@ body {
   position: absolute;
   top: 8px;
   left: 8px;
-  font-size: 0.625rem;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 0.6875rem;
   font-weight: 600;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--strata-text-secondary);
+  color: var(--strata-interactive);
+  opacity: 0.7;
   pointer-events: none;
   z-index: 1;
+}
+
+.drawing-view__ref {
+  font-family: var(--font-mono);
+  font-size: 0.5625rem;
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  color: var(--strata-text-disabled);
 }
 
 /* Cards inside drawing views fill their container */
@@ -361,7 +412,7 @@ body {
   flex-direction: column;
   flex-shrink: 0;
   min-width: 120px;
-  border-right: 1px solid var(--strata-border);
+  border-right: 1px solid var(--strata-border-subtle);
   overflow: hidden;
 }
 
@@ -379,23 +430,25 @@ body {
 
 .spec-col__header {
   flex-shrink: 0;
-  height: 20px;
+  height: 24px;
   display: flex;
   align-items: center;
   padding: 0 8px;
-  font-size: 0.625rem;
+  font-size: 0.6875rem;
   font-weight: 600;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--strata-text-secondary);
-  background: var(--strata-surface);
+  color: var(--strata-interactive);
+  background-color: var(--strata-layer-01);
+  background-image: var(--strata-texture-hatch-h);
+  background-repeat: repeat;
   border-bottom: 1px solid var(--strata-border);
 }
 
 .spec-col__body {
   flex: 1;
   min-height: 0;
-  overflow-y: hidden;
+  overflow-y: auto;
   padding: var(--space-1) var(--space-2);
   display: flex;
   flex-direction: column;
@@ -440,6 +493,12 @@ body {
   border-top: none;
   border-radius: 0;
   height: 100%;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  line-height: 1.5;
+  letter-spacing: 0.01em;
+  background: var(--strata-bg);
+  caret-color: var(--strata-interactive);
 }
 
 /* Export column */
@@ -462,6 +521,28 @@ body {
 .spec-col--export .td-guide {
   margin-top: var(--space-1);
   font-size: var(--type-xs);
+}
+
+.td-guide summary {
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--strata-text-secondary);
+  cursor: pointer;
+}
+
+.td-guide .td-guide__body {
+  font-size: 0.625rem;
+  line-height: 1.5;
+  color: var(--strata-text-secondary);
+  padding-top: var(--space-1);
+}
+
+.td-guide .td-guide__body p {
+  margin-bottom: var(--space-1);
+  font-size: 0.625rem;
 }
 
 .compact-field {
@@ -527,10 +608,11 @@ body {
 .qr3d-hint {
   margin: 0;
   padding: var(--space-1) var(--space-2);
-  color: var(--strata-text-secondary);
-  font-size: var(--type-xs, 0.7rem);
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
   letter-spacing: 0.04em;
-  border-top: 1px solid var(--strata-border);
+  color: var(--strata-text-disabled);
+  border-top: 1px solid var(--strata-border-subtle);
 }
 
 /* Controls column */
@@ -592,6 +674,8 @@ body {
 .td-export-btn {
   width: 100%;
   justify-content: center;
+  letter-spacing: 0.1em;
+  font-size: 0.75rem;
 }
 
 /* Status notice inside controls */
@@ -634,11 +718,11 @@ body {
 }
 .param-label {
   min-width: 0;
-  font-size: var(--type-xs, 0.72rem);
-  font-weight: 500;
-  letter-spacing: 0.05em;
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--strata-text-secondary);
+  color: var(--strata-text-disabled);
   line-height: 1.3;
 }
 .param-right {
@@ -649,19 +733,24 @@ body {
 }
 
 .param-select {
-  font-size: var(--type-xs);
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.02em;
   padding: 2px 4px;
   min-height: 1.75rem;
+  background: var(--strata-bg);
 }
 .param-input {
   width: 66px;
   text-align: right;
   padding: 2px 4px;
   min-height: 1.75rem;
-  font-size: var(--type-sm);
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
   border: 1px solid var(--strata-border);
-  background: var(--strata-input-bg, var(--strata-surface));
+  background: var(--strata-bg);
   color: var(--strata-text-primary);
   outline: none;
 }
@@ -669,8 +758,9 @@ body {
   border-color: var(--strata-interactive);
 }
 .param-unit {
-  font-size: var(--type-xs, 0.7rem);
-  color: var(--strata-text-secondary);
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  color: var(--strata-text-disabled);
   min-width: 22px;
 }
 /* Section headers within settings */
@@ -686,6 +776,44 @@ body {
 }
 .param-section:first-child {
   margin-top: var(--space-1);
+}
+
+/* ── Status bar footer ──────────────────────────────────────────────────── */
+.status-bar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: 22px;
+  padding: 0 var(--space-1);
+  background-color: var(--strata-layer-01);
+  background-image: var(--strata-texture-hatch-fwd);
+  background-repeat: repeat;
+  border-top: 1px solid var(--strata-border);
+  font-size: 0.5625rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--strata-text-disabled);
+  overflow: hidden;
+}
+
+.status-bar__item {
+  white-space: nowrap;
+}
+
+.status-bar__item--mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.status-bar__item--right {
+  margin-left: auto;
+}
+
+.status-bar__sep {
+  width: 1px;
+  height: 10px;
+  background: var(--strata-border-subtle);
 }
 
 /* ── Responsive ──────────────────────────────────────────────────────────── */
@@ -745,5 +873,8 @@ body {
   }
   .controls {
     flex-direction: column;
+  }
+  .status-bar {
+    display: none;
   }
 }

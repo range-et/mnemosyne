@@ -122,8 +122,8 @@ Named presets for first-time users: "Key-ring fob", "Appliance label", "Tool rac
 ### P3.3 — Draft Angle Zero Marker
 Add a tick mark or center notch at 0° on the draft angle input. Zero is the most common choice for non-mold FDM prints.
 
-### P3.4 — Dark Mode / Theme Sync for 3D View
-The theme toggle does not fire an event that `threed.js` listens to — the 3D model stays at the old theme color until the next rebuild. Wire a `MutationObserver` on `document.documentElement`'s class list to call `syncRendererBackground()` and update `mat.color` in real time.
+### ~~P3.4 — Dark Mode / Theme Sync for 3D View~~ **Done**
+MutationObserver on `data-strata` attribute syncs renderer background, material color, and lip material color in real time on theme toggle.
 
 ### P3.5 — Payload Templates
 *(See P1.4 above — moved up in priority.)*
@@ -213,7 +213,7 @@ A persistent library of all tags ever created (payload + settings + export date)
 | P2.4 Plain-language ECC guidance | Low | Medium | — |
 | P2.6 Print PDF via window.print() | Low | Medium | — |
 | P2.8 Label position toggle | Low | Medium | — |
-| P3.4 Dark mode theme sync (3D) | Low | Low | — |
+| ~~P3.4 Dark mode theme sync (3D)~~ | ~~Low~~ | ~~Low~~ | **Done** |
 | P3.6 Scale grid in 3D view | Trivial | Low | — |
 | P3.7 Export readiness state | Trivial | Medium | — |
 | P3.8 Web Worker for JSCAD | High | High (prerequisite for batch) | — |

@@ -13,6 +13,7 @@
   <body>
     <header class="monad-header">
       <span class="monad-header__name">Mnemosyne</span>
+      <span class="header-version">v1.0</span>
       <div class="monad-header__actions">
         <button class="strata-toggle" data-mn-theme-toggle aria-label="Toggle theme">◑</button>
       </div>
@@ -25,7 +26,7 @@
 
         <!-- Plan view: 2D QR preview -->
         <div class="drawing-view drawing-view--plan">
-          <div class="drawing-view__label">Plan View</div>
+          <div class="drawing-view__label">PLAN_VIEW <span class="drawing-view__ref">// 2D</span></div>
           <article id="pane-2d" class="atomos-card qr-preview-card">
             <div class="atomos-card__header">
               <span class="atomos-card__title">Preview</span>
@@ -54,7 +55,7 @@
 
         <!-- Isometric view: 3D canvas preview -->
         <div class="drawing-view drawing-view--iso">
-          <div class="drawing-view__label">Isometric View</div>
+          <div class="drawing-view__label">ISO_VIEW <span class="drawing-view__ref">// 3D</span></div>
           <article id="pane-3d" class="atomos-card">
             <div class="atomos-card__header">
               <span class="atomos-card__title">3D preview</span>
@@ -272,6 +273,13 @@
       </div>
 
     </main>
+
+    <footer class="status-bar">
+      <span class="status-bar__item">Mnemosyne</span>
+      <span class="status-bar__sep"></span>
+      <span class="status-bar__item status-bar__item--mono" id="sb-module">QR-to-STL</span>
+      <span class="status-bar__item status-bar__item--right status-bar__item--mono">System OK</span>
+    </footer>
 
     <script type="module" src="./vendor/monad_system/build/monad.js"></script>
     <script type="module" src="./app.js"></script>
