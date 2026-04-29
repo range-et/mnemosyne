@@ -1,5 +1,8 @@
 ---
 tags: [project, mnemosyne, northstar, fabrication, design-system]
+status: shipped
+domain: code-tools
+repo: https://github.com/range-et/mnemosyne
 ---
 
 # Why ? 
