@@ -1,0 +1,13 @@
+# Mirrored into Assemblage/_Projects/mnemosyne/
+include = [
+    "NorthStar.md",
+    "FEATURES.md",
+    "Issues.md",
+    "README.md",
+]
+exclude = [
+    "CLAUDE.md",
+    "node_modules/**",
+    "dist/**",
+    "vendor/**",
+]
