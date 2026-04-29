@@ -1,3 +1,7 @@
+---
+tags: [project, mnemosyne, features, fabrication, design-system]
+---
+
 # Mnemosyne — Feature Roadmap
 
 Synthesized from Frontend Developer, Senior Developer, and UX Researcher analysis of the codebase and NorthStar vision. Features are grouped by priority tier, with UX rationale where it shapes the decision.
@@ -221,3 +225,8 @@ A persistent library of all tags ever created (payload + settings + export date)
 | P4.2 Two-part STL export | Medium | High | — |
 | P4.3 PWA / offline | Medium | Medium | — |
 | P4.4 Tag library | High | High | — |
+
+
+---
+
+*Related: [NorthStar](NorthStar.md)*

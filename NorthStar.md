@@ -1,3 +1,7 @@
+---
+tags: [project, mnemosyne, northstar, fabrication, design-system]
+---
+
 # Why ? 
 
 Products come with instructions. Said booklets are lost very easily. This project solves this problem by generating QR codes from the text in a booklet, and printing them on a 3D printer. Or it points to an online repository or a readme or something that has the instruction which are needed. Finally the printed QR code can be attached to the object as a label or if 3d printed as a key ring or something.

@@ -1,3 +1,7 @@
+---
+tags: [project, mnemosyne, readme]
+---
+
 # Offline Text QR Workshop
 
 **[Try it live](https://range-et.github.io/mnemosyne/)**
@@ -49,3 +53,8 @@ npm run preview
 
 The UI follows Monad-style class naming and token-driven styling conventions from [monad_system](https://github.com/range-et/monad_system).
 If your project already ships `monad.css`, you can replace or reduce `styles.css` overrides and map components to your existing tokens.
+
+
+---
+
+*Related: [NorthStar](NorthStar.md)*
