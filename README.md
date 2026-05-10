@@ -57,4 +57,4 @@ If your project already ships `monad.css`, you can replace or reduce `styles.css
 
 ---
 
-*Related: [NorthStar](NorthStar.md)*
+*Related: [NorthStar](NorthStar.md) · [FEATURES](FEATURES.md) · [Issues](Issues.md)*
