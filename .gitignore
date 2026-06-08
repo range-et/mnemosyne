@@ -1,3 +1,11 @@
 node_modules/
 dist/
 .DS_Store
+.aider*
+.env
+
+# Playwright
+/test-results/
+/playwright-report/
+/tests/__output__/
+/tests/screenshots/

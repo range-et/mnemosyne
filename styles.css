@@ -371,8 +371,22 @@ body {
   border: none; /* border provided by drawing-view */
 }
 
-/* Hide the card header — drawing-view__label replaces it */
+/* The drawing-view__label replaces the card title, but the header also holds
+   the action buttons (SVG / PNG / Fit). Float the header into the top-right
+   corner as an overlay so those controls stay accessible, and hide just the
+   now-redundant title. */
 .drawing-view > .atomos-card > .atomos-card__header {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  z-index: 2;
+  width: auto;
+  padding: 0;
+  border: none;
+  background: none;
+}
+
+.drawing-view > .atomos-card > .atomos-card__header .atomos-card__title {
   display: none;
 }
 
@@ -397,11 +411,13 @@ body {
 }
 
 /* ── Spec strip ──────────────────────────────────────────────────────────── */
+/* Height is sized to the tallest column's content so nothing is clipped.
+   The views row above flexes to consume the remaining viewport height. */
 .spec-strip {
   flex-shrink: 0;
-  height: 200px;
   display: flex;
   flex-direction: row;
+  align-items: stretch;
   overflow-x: auto;
   overflow-y: hidden;
   border-top: 1px solid var(--strata-border);
@@ -448,21 +464,47 @@ body {
 .spec-col__body {
   flex: 1;
   min-height: 0;
-  overflow-y: auto;
+  overflow: visible;
   padding: var(--space-1) var(--space-2);
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
 }
 
+/* History can grow with up to 10 entries — keep it scrollable on its own */
 .spec-col--history .spec-col__body {
   overflow-y: auto;
 }
 
-/* Compact param-rows inside spec strip */
+/* Stacked param-rows inside the spec strip: label on its own line above the
+   control. This guarantees labels are never horizontally clipped in the narrow
+   columns, and keeps selects/inputs full-width and aligned. */
 .spec-strip .param-row {
-  padding-top: 2px;
-  padding-bottom: 2px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2px;
+  padding: 3px 0;
+}
+
+.spec-strip .param-label {
+  white-space: normal;
+  line-height: 1.25;
+}
+
+.spec-strip .param-right {
+  justify-content: space-between;
+  width: 100%;
+}
+
+.spec-strip .param-input {
+  flex: 1;
+  width: auto;
+  min-width: 0;
+}
+
+.spec-strip .param-select {
+  width: 100%;
 }
 
 .spec-strip .param-section {

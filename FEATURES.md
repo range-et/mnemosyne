@@ -21,6 +21,13 @@ Both ultimately want a **physical artifact that outlasts the original booklet** 
 
 ## Completed
 
+### Sprint 7 — Spec-strip readability fix, hidden-controls fix, Playwright E2E
+- ✅ **Updated Monad design system** — Pulled `vendor/monad_system` up to `12ff03e` (NASA-discipline recolor of all `--strata-*` tokens, motion tokens, new texture/theme targets). Token names unchanged, so `styles.css` continues to work; the app now picks up the refreshed palette.
+- ✅ **Spec-strip text no longer clipped** — Param rows in the bottom spec strip were laid out as inline `label | control`, which squeezed long uppercase labels into the narrow columns and clipped them horizontally ("ER CO", "MODU SIZE", "MC None"). Rows are now stacked (label above control) so labels always render in full, and selects/number inputs go full-width.
+- ✅ **Spec strip sized to content (no internal scroll)** — Removed the fixed `height: 200px` + per-column `overflow-y: auto` that hid the lower param rows (inner/outer gap, label size/raise). The strip now sizes to its tallest column and the views row flexes to fill the rest, so no content is cut and the page still fits one screen.
+- ✅ **Restored hidden SVG / PNG / Fit controls** — The engineering-drawing layout set `.atomos-card__header { display:none }`, which also hid the action buttons living in that header, making 2D SVG/PNG export and the 3D "Fit" camera button completely inaccessible. The header is now an absolutely-positioned top-right overlay (title hidden, actions shown).
+- ✅ **Playwright end-to-end test** — Single cohesive spec (`tests/layout.spec.js`) that renders dark + light screenshots and asserts: (1) the page is one screen with no scrolling, (2) functionality works (QR generation, 3D model build, STL/SVG/PNG downloads), and (3) nothing is fragmented (no clipped param labels, no spec column hiding content behind an internal scrollbar). Run with `npm test`.
+
 ### Sprint 1 — Core foundations
 - ✅ **P0.1 localStorage persistence** — All 14 controls saved on every `input` event, restored on load. 2D settings under `mn_*`, 3D settings under `mn_3d_*`.
 - ✅ **P0.2 Meaningful export filenames** — STL, SVG, and PNG derive names from label text → timestamp (e.g. `mnemosyne-washing-machine.stl`).
