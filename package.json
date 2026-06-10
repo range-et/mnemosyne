@@ -1,7 +1,7 @@
 {
-  "name": "hox",
+  "name": "mnemosyne",
   "version": "1.0.0",
-  "description": "Offline text-to-QR generator for fabrication workflows",
+  "description": "Offline QR-to-STL workshop: turn text into scannable QR codes and printable 3D tags",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
