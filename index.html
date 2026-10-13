@@ -4,9 +4,6 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Mnemosyne</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="./vendor/monad_system/build/monad.css" />
     <link rel="stylesheet" href="./styles.css" />
   </head>
@@ -26,7 +23,7 @@
 
         <!-- Plan view: 2D QR preview -->
         <div class="drawing-view drawing-view--plan">
-          <div class="drawing-view__label">PLAN_VIEW <span class="drawing-view__ref">// 2D</span></div>
+          <div class="drawing-view__label">Plan view <span class="drawing-view__ref">2D</span></div>
           <article id="pane-2d" class="atomos-card qr-preview-card">
             <div class="atomos-card__header">
               <span class="atomos-card__title">Preview</span>
@@ -55,7 +52,7 @@
 
         <!-- Isometric view: 3D canvas preview -->
         <div class="drawing-view drawing-view--iso">
-          <div class="drawing-view__label">ISO_VIEW <span class="drawing-view__ref">// 3D</span></div>
+          <div class="drawing-view__label">Isometric view <span class="drawing-view__ref">3D</span></div>
           <article id="pane-3d" class="atomos-card">
             <div class="atomos-card__header">
               <span class="atomos-card__title">3D preview</span>
@@ -66,7 +63,7 @@
             <div class="atomos-card__body qr3d-body">
               <canvas id="qr3d-canvas" class="qr3d-canvas"></canvas>
               <p class="qr3d-hint">Drag to orbit &middot; Scroll to zoom &middot; Right-drag to pan</p>
-              <p id="td-dims" class="qr3d-hint" style="display:none"></p>
+              <p id="td-dims" class="qr3d-hint qr3d-hint--data" style="display:none"></p>
             </div>
           </article>
         </div>
@@ -88,7 +85,7 @@
 
         <!-- QR -->
         <div class="spec-col spec-col--qr">
-          <div class="spec-col__header">QR Code</div>
+          <div class="spec-col__header">QR code</div>
           <div class="spec-col__body">
             <div class="param-row">
               <label class="param-label" for="ecc-level">Error correction</label>
@@ -128,7 +125,7 @@
             <div class="param-row">
               <label class="param-label" for="td-lip-width">Lip width</label>
               <span class="param-right">
-                <input id="td-lip-width" type="number" class="param-input" min="0.15" max="1.2" step="0.05" value="0.35" />
+                <input id="td-lip-width" type="number" class="param-input" min="0.15" max="1.2" step="0.05" value="0.4" />
                 <span class="param-unit">mm</span>
               </span>
             </div>
@@ -252,7 +249,7 @@
               <summary class="td-guide__summary">How to print this tag</summary>
               <div class="td-guide__body">
                 <p><strong>Single extruder + paint fill</strong><br>
-                Print with "Invert modules" OFF. Fill recessed cells with nail polish or acrylic paint. Wipe surface clean when dry.</p>
+                Print with "Invert modules" off. Fill recessed cells with nail polish or acrylic paint. Wipe surface clean when dry.</p>
                 <p><strong>Two-color / AMS printer</strong><br>
                 Toggle "Invert modules" to match your filament sequence for color 1 (base) vs color 2 (cells).</p>
                 <p><strong>Slicer tips</strong><br>
@@ -277,8 +274,8 @@
     <footer class="status-bar">
       <span class="status-bar__item">Mnemosyne</span>
       <span class="status-bar__sep"></span>
-      <span class="status-bar__item status-bar__item--mono" id="sb-module">QR-to-STL</span>
-      <span class="status-bar__item status-bar__item--right status-bar__item--mono">System OK</span>
+      <span class="status-bar__item">QR-to-STL</span>
+      <span class="status-bar__item status-bar__item--right">System OK</span>
     </footer>
 
     <script type="module" src="./vendor/monad_system/build/monad.js"></script>

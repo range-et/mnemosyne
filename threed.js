@@ -52,7 +52,7 @@ function save3DSettings() {
   s.setItem("mn_3d_text_size", textSizeInput.value);
   s.setItem("mn_3d_text_raise",textRaiseInput.value);
   s.setItem("mn_3d_lip_enable",lipEnableCb?.checked  ? "1" : "0");
-  s.setItem("mn_3d_lip_width", lipWidthInput?.value ?? "0.35");
+  s.setItem("mn_3d_lip_width", lipWidthInput?.value ?? "0.4");
   if (attachmentSelect) s.setItem("mn_3d_attach",   attachmentSelect.value);
   if (keyringRInput)    s.setItem("mn_3d_keyring_r", keyringRInput.value);
   if (mountRInput)      s.setItem("mn_3d_mount_r",   mountRInput.value);
@@ -91,7 +91,7 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.toneMapping         = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.05;
 renderer.shadowMap.enabled   = true;
-renderer.shadowMap.type      = THREE.PCFSoftShadowMap;
+renderer.shadowMap.type      = THREE.PCFShadowMap;
 
 const scene  = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 5000);
@@ -142,7 +142,7 @@ function makeAxisLabelSprite(text, color) {
   c.height = 64;
   const ctx = c.getContext("2d");
   ctx.clearRect(0, 0, c.width, c.height);
-  ctx.font = "700 42px Instrument Sans, system-ui, sans-serif";
+  ctx.font = `700 42px ${readCSSVar("--font-sans", "Helvetica, Arial, sans-serif")}`;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.strokeStyle = "rgba(0,0,0,0.35)";
@@ -190,18 +190,20 @@ function ensureComposer(w, h) {
   ssaoPass.setSize(w, h);
 }
 
-function lipPreviewColor() {
-  const c = new THREE.Color(readCSSVar("--strata-text-primary", "#e0e0e0"));
-  const L   = 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b;
-  if (L > 0.42) return c;
-  c.setScalar(0.11);
-  return c;
+// Dark theme: the model takes the near-white primary text tone. Light theme:
+// primary text is near-black and hides the shading, so use the secondary tone.
+function modelColor() {
+  const light = document.documentElement.dataset.strata === "light";
+  return new THREE.Color(light
+    ? readCSSVar("--strata-text-secondary", "#4f5a69")
+    : readCSSVar("--strata-text-primary", "#e0e0e0"));
 }
 
 // ── State ─────────────────────────────────────────────────────────────────────
 let qrMatrix    = null;
 let labelText   = "";
 let borderCells = 4;
+let moduleMm    = 1;   // physical size of one QR module in mm
 let jscadParts  = [];
 let modelGroup  = null;
 let rebuildTimer = null;
@@ -320,7 +322,7 @@ function rebuild() {
 
   if (!qrMatrix) return;
 
-  mat.color.set(readCSSVar("--strata-text-primary", "#e0e0e0"));
+  mat.color.copy(modelColor());
   syncRendererBackground();
 
   const invert        = invertCb.checked;
@@ -329,7 +331,7 @@ function rebuild() {
   const baseThickness = parseFloat(baseInput.value);
   const textSizeMm    = parseFloat(textSizeInput.value);
   const labelRaiseMm  = Math.min(parseFloat(textRaiseInput.value), h);
-  const lipW          = lipEnableCb?.checked ? parseFloat(lipWidthInput?.value ?? 0.35) : 0;
+  const lipW          = lipEnableCb?.checked ? parseFloat(lipWidthInput?.value ?? 0.4) : 0;
   const lipH          = h; // lip is always as tall as the module extrusions
 
   // ── P1.5 Printability warnings ────────────────────────────────────────────
@@ -342,7 +344,7 @@ function rebuild() {
   }
 
   const n      = qrMatrix.length;
-  const ms     = 1;
+  const ms     = moduleMm;
   const offset = (n * ms) / 2;
   const lh     = labelText ? textSizeMm * 2.0 : 0;         // label area height (mm)
   const taper  = h * Math.tan((draftDeg * Math.PI) / 180); // can be negative
@@ -351,19 +353,37 @@ function rebuild() {
   const GAP2 = parseFloat(gap2Input?.value ?? 0.5); // mm clearance between lip outer edge and hole edge
 
   // Auto-calculate quiet zone border from component parts.
-  // Minimum 4 cells for QR scan reliability; expands to fit lip + gaps + hole.
+  // Minimum 4 modules for QR scan reliability; expands to fit lip + gaps + hole.
+  // The border is rounded up to whole modules.
   const attachMode = attachmentSelect ? attachmentSelect.value : "none";
   const rawHoleR = attachMode === "keyring" ? parseFloat(keyringRInput?.value ?? 2.0)
                  : attachMode === "mount"   ? parseFloat(mountRInput?.value   ?? 1.5)
                  : 0;
-  const requiredBorderMm = Math.max(4, GAP1 + lipW + GAP2 + 2 * rawHoleR + 0.5);
-  const bw = Math.ceil(requiredBorderMm);  // ms=1, so cells == mm
+  const requiredBorderMm = Math.max(4 * ms, GAP1 + lipW + GAP2 + 2 * rawHoleR + 0.5);
+  const bw = Math.ceil(requiredBorderMm / ms - 1e-9) * ms;
 
   modelGroup = new THREE.Group();
 
+  // Label text is built first so a long label can widen the plate.
+  let textJscad = null;
+  if (labelText && lh > 0) {
+    try {
+      const labelCenterY = -((n * ms) / 2 + bw + lh / 2);
+      textJscad = buildLabelTextJscad(labelText, textSizeMm, labelRaiseMm, labelCenterY);
+    } catch (e) {
+      console.warn("Label text geometry failed:", e);
+    }
+  }
+  let labelW = 0;
+  if (textJscad) {
+    const bb = measureBoundingBox(textJscad);
+    labelW = bb[1][0] - bb[0][0];
+  }
+
   // ── Base plate ───────────────────────────────────────────────────────────
-  // Extends bw on all sides; label area adds lh on the Y− side (Three.js Z+)
-  const plateWX  = n * ms + 2 * bw;
+  // Extends bw on all sides; label area adds lh on the Y− side (Three.js Z+).
+  // The plate widens to keep half a border on each side of a long label.
+  const plateWX  = Math.max(n * ms + 2 * bw, labelW + bw);
   const plateWY  = n * ms + 2 * bw + lh;
   const plateCY  = -lh / 2;  // shift centre toward label side
 
@@ -416,7 +436,7 @@ function rebuild() {
     const lipJscad = buildInnerLipJscad(lipHalfInner, lipW, lipH);
     if (lipJscad) {
       jscadParts.push(lipJscad);
-      matLip.color.copy(lipPreviewColor());
+      matLip.color.copy(modelColor());
       const lipMesh = new THREE.Mesh(toBufferGeometry(lipJscad), matLip);
       lipMesh.castShadow = lipMesh.receiveShadow = true;
       modelGroup.add(lipMesh);
@@ -442,19 +462,11 @@ function rebuild() {
   }
 
   // ── Label text (raised on top face of base plate, in the border area) ────
-  if (labelText && lh > 0) {
-    try {
-      const labelCenterY = -(n / 2 + bw + lh / 2);
-      const textJscad = buildLabelTextJscad(labelText, textSizeMm, labelRaiseMm, labelCenterY);
-      if (textJscad) {
-        jscadParts.push(textJscad);
-        const textMesh = new THREE.Mesh(toBufferGeometry(textJscad), mat);
-        textMesh.castShadow = textMesh.receiveShadow = true;
-        modelGroup.add(textMesh);
-      }
-    } catch (e) {
-      console.warn("Label text geometry failed:", e);
-    }
+  if (textJscad) {
+    jscadParts.push(textJscad);
+    const textMesh = new THREE.Mesh(toBufferGeometry(textJscad), mat);
+    textMesh.castShadow = textMesh.receiveShadow = true;
+    modelGroup.add(textMesh);
   }
 
   scene.add(modelGroup);
@@ -478,8 +490,9 @@ function rebuild() {
     // Position camera slightly in front and moderately above so the label
     // strip (near / positive-Z side) reads clearly at the visual bottom rather
     // than appearing centrally in a steep top-down view.
-    camera.position.set(span * 0.1, span * 1.6, span * 0.9);
-    orbitControls.target.set(0, h / 2, 0);
+    // Aim at the plate centre: the label strip shifts it toward +Z (Three.js).
+    camera.position.set(span * 0.1, span * 1.6, span * 0.9 + lh / 2);
+    orbitControls.target.set(0, h / 2, lh / 2);
     orbitControls.update();
   }
 }
@@ -509,7 +522,7 @@ function renderAxesOverlay() {
   const fullH = canvas.clientHeight;
   if (fullW <= 0 || fullH <= 0) return;
 
-  const size = Math.max(80, Math.round(Math.min(fullW, fullH) * 0.16));
+  const size = Math.max(56, Math.round(Math.min(fullW, fullH) * 0.16));
   const margin = 12;
   const x = margin;
   const y = margin;
@@ -670,7 +683,7 @@ document.getElementById("td-fit-camera")?.addEventListener("click", () => {
 // Label text + border dimensions arrive from app.js via qr-updated
 document.addEventListener("qr-updated", (e) => {
   if (!e.detail) {
-    qrMatrix = null; labelText = ""; borderCells = 4;
+    qrMatrix = null; labelText = ""; borderCells = 4; moduleMm = 1;
     rebuild();
     return;
   }
@@ -678,6 +691,7 @@ document.addEventListener("qr-updated", (e) => {
   qrMatrix    = e.detail.matrix;
   labelText   = e.detail.labelText   ?? "";
   borderCells = e.detail.borderCells ?? 4;
+  moduleMm    = e.detail.moduleMm    ?? 1;
   // Reset camera sentinel if the QR grid size changed so the new build reframes
   if (dimensionsChanged) lastMatrixN = -1;
   rebuild();
@@ -692,6 +706,6 @@ syncRendererBackground();
 // ── Theme sync — re-color scene when dark/light mode toggles ──────────────────
 new MutationObserver(() => {
   syncRendererBackground();
-  mat.color.set(readCSSVar("--strata-text-primary", "#e0e0e0"));
-  matLip.color.copy(lipPreviewColor());
+  mat.color.copy(modelColor());
+  matLip.color.copy(modelColor());
 }).observe(document.documentElement, { attributes: true, attributeFilter: ["data-strata"] });

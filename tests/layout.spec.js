@@ -44,6 +44,12 @@ test('Mnemosyne is a single non-scrolling page with working, unfragmented UI', a
   const dims = page.locator('#td-dims');
   await expect(dims).toBeVisible();
   await expect(dims).toContainText(/W .* H .* D .* mm/);
+  // The STL uses the Module size setting: a 25×25 code plus a 4-module quiet
+  // zone on each side is 33 modules, so 33 × 1.5 mm = 49.5 mm wide.
+  await page.fill('#module-size', '1.5');
+  await expect(dims).toContainText('W 49.5 ×');
+  await page.fill('#module-size', '0.8');
+  await expect(dims).toContainText('W 26.4 ×');
 
   // ── 2. Single page, no scrolling ──────────────────────────────────────────
   const scroll = await page.evaluate(() => ({

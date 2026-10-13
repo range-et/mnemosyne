@@ -21,6 +21,15 @@ Both ultimately want a **physical artifact that outlasts the original booklet** 
 
 ## Completed
 
+### Sprint 8 — Monad NASA type update, module-size STL fix, load race
+- ✅ **Updated Monad design system** — Pulled `vendor/monad_system` up to `358d055` (type restyled after the NASA Graphics Standards Manual). Dropped the Instrument Sans override so the app uses Monad's Helvetica `--font-sans`. All labels, column headers, view titles, buttons and the status bar are now sentence case in Helvetica Medium with no letter spacing. `--font-mono` is kept only for data (stats, payload, numeric inputs, dimensions). Removed unused uppercase rules (`.threshold-nav`, `.td-group-label`, `.param-section`) and the hex fallbacks on the payload meter.
+- ✅ **STL honours Module size** — The 3D model always used 1 mm modules, so the STL did not match the Module size setting or the 2D print size. `qr-updated` now carries `moduleMm` and the plate, quiet zone and label strip scale with it. The 2D paint lip also converts the inner gap from mm to modules.
+- ✅ **3D model missing on reload (dev)** — `app.js` fired the first `qr-updated` from a `setTimeout`, which could run before `threed.js` finished loading, so the 3D view stayed empty. The first update now runs on `DOMContentLoaded`.
+- ✅ **Long labels fit the tag** — The plate (3D) and the white tag (2D SVG/PNG) widen when the label is wider than the QR area, instead of the text hanging off the edge.
+- ✅ **Readable 3D model in light theme** — The model used the near-black primary text colour and rendered as a silhouette. Light theme now uses the secondary text tone. The camera aims at the plate centre, including the label strip.
+- ✅ **Short viewports** — The views keep a 400 px minimum height and the page scrolls below that, instead of shrinking the 2D preview to nothing (seen at 1280×720).
+- ✅ **Defaults and console** — Default lip width is now 0.4 mm, so the default model no longer shows the sub-nozzle warning. Replaced the deprecated `PCFSoftShadowMap`. The mobile axes gizmo is smaller.
+
 ### Sprint 7 — Spec-strip readability fix, hidden-controls fix, Playwright E2E
 - ✅ **Updated Monad design system** — Pulled `vendor/monad_system` up to `12ff03e` (NASA-discipline recolor of all `--strata-*` tokens, motion tokens, new texture/theme targets). Token names unchanged, so `styles.css` continues to work; the app now picks up the refreshed palette.
 - ✅ **Spec-strip text no longer clipped** — Param rows in the bottom spec strip were laid out as inline `label | control`, which squeezed long uppercase labels into the narrow columns and clipped them horizontally ("ER CO", "MODU SIZE", "MC None"). Rows are now stacked (label above control) so labels always render in full, and selects/number inputs go full-width.
@@ -159,7 +168,7 @@ Accept a CSV upload (`payload, label_text` columns). For each row, generate a QR
 Export two separate STL files: base + raised modules (color 1), and a thin inlay fitting the recessed spaces (color 2). Completes the original NorthStar vision by making nail polish unnecessary for users with multi-material printers. The second body is the logical inverse of the first within the bounding volume.
 
 ### P4.3 — PWA / Offline Support
-`manifest.json` + service worker pre-caching the app shell (HTML, CSS, JS, vendor bundles, font). Makers in workshops may have spotty connectivity. Self-host Instrument Sans as WOFF2 to eliminate the Google Fonts cross-origin cache complication.
+`manifest.json` + service worker pre-caching the app shell (HTML, CSS, JS, vendor bundles, font). Makers in workshops may have spotty connectivity. Self-host the Monad web fonts (Inter fallback, JetBrains Mono) as WOFF2 to eliminate the Google Fonts cross-origin cache complication.
 
 ### P4.4 — Tag Library / Project File
 A persistent library of all tags ever created (payload + settings + export date), stored in localStorage or IndexedDB. Browse, re-export, or update any entry. Addresses the "manage 30 household appliance tags" scenario fully. Longer-term: JSON export/import of the library for backup.

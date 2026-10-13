@@ -22,7 +22,7 @@ Mnemosyne is a single-page offline QR-to-STL tool. There is no backend — every
 
 The two modules are decoupled and communicate only via `CustomEvent` on `document`:
 
-- `qr-updated` — fired by `app.js` whenever the QR matrix changes; `threed.js` listens and rebuilds the 3D model. `detail` is `{ matrix, labelText, borderCells }` or `null` to clear.
+- `qr-updated` — fired by `app.js` whenever the QR matrix changes; `threed.js` listens and rebuilds the 3D model. `detail` is `{ matrix, labelText, borderCells, moduleMm }` or `null` to clear. The 3D model and STL use `moduleMm` as the physical module size.
 - `tab-changed` — fired by `app.js` on tab switch; `threed.js` uses this to resize the renderer and trigger a rebuild when the 3D pane becomes visible.
 
 ### 3D pipeline
@@ -38,7 +38,7 @@ Post-processing uses Three.js `EffectComposer` with SSAO. It falls back graceful
 
 ### Styling
 
-`styles.css` is layered on top of `vendor/monad_system/build/monad.css`. Style rules must use `--strata-*` CSS tokens from the Monad system. Hard-coded hex values are forbidden except for `#fff` on the QR scanner surface. No `border-radius` on `atomos-*` components, no `box-shadow`, no gradients.
+`styles.css` is layered on top of `vendor/monad_system/build/monad.css`. Style rules must use `--strata-*` CSS tokens from the Monad system. Hard-coded hex values are forbidden except for `#fff` on the QR scanner surface. No `border-radius` on `atomos-*` components, no `box-shadow`, no gradients. Type follows Monad: Helvetica (`--font-sans`), sentence case, Medium (500) for labels. No uppercase letter-spaced labels. Use `--font-mono` only for data (numbers, payloads, dimensions).
 
 ### localStorage keys
 

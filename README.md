@@ -31,7 +31,8 @@ Everything runs in the browser. No backend, no upload, fully offline after build
   paint-fill so the code reads with consistent contrast and survives handling.
 - **Attachment modes**: none, key-ring hole, or mounting holes, with configurable radius and
   smart validation against the quiet-zone width.
-- Auto-calculated quiet zone so the plate always fits the lip, gaps, and holes.
+- Uses the 2D module size, so the STL matches the printed QR size.
+- Auto-calculated quiet zone so the plate always fits the lip, gaps, and holes. Long labels widen the plate.
 - Live `W × H × D mm` dimension readout and printability warnings (thin lip, bad draft).
 - Export a binary **STL** for slicing.
 - Two-color print guide (single-extruder paint-fill and two-color / AMS workflows).

@@ -96,8 +96,12 @@ function buildQrSvg(qr, n, borderCells, labelText, textSizeMm, moduleMm, lipEnab
   const fontSize = fontSizeVb;
   const lh      = labelText ? Math.round(fontSize * 2.0) : 0;  // label row height
 
-  const totalW  = n * cell + 2 * bw;
+  // A long label widens the tag. Monospace glyphs are about 0.6 em wide.
+  const qrW     = n * cell + 2 * bw;
+  const labelW  = labelText ? labelText.length * 0.6 * fontSize : 0;
+  const totalW  = Math.max(qrW, labelW + bw);
   const totalH  = n * cell + 2 * bw + lh;
+  const ox      = (totalW - qrW) / 2;           // x offset that centres the QR
 
   const parts = [
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${totalW} ${totalH}" class="qr-svg">`,
@@ -108,7 +112,7 @@ function buildQrSvg(qr, n, borderCells, labelText, textSizeMm, moduleMm, lipEnab
   for (let row = 0; row < n; row++) {
     for (let col = 0; col < n; col++) {
       if (qr.isDark(row, col)) {
-        const x = bw + col * cell;
+        const x = ox + bw + col * cell;
         const y = bw + row * cell;
         parts.push(`<rect x="${x}" y="${y}" width="${cell}" height="${cell}" fill="black"/>`);
       }
@@ -129,13 +133,14 @@ function buildQrSvg(qr, n, borderCells, labelText, textSizeMm, moduleMm, lipEnab
   if (lipEnabled && lipWMm > 0 && moduleMm > 0 && borderCells >= 2) {
     const GAP1 = parseFloat(document.getElementById("td-gap1")?.value || 1);
     const lipVb = Math.max(cell * 0.15, lipWMm / moduleMm * cell);
-    // Lip inner edge sits GAP1 cells outside the QR module boundary (inside quiet zone).
+    const gapVb = GAP1 / moduleMm * cell;
+    // Lip inner edge sits GAP1 mm outside the QR module boundary (inside quiet zone).
     // Stroke is centered on the rect edge so offset by half the stroke width.
-    const rx = bw - GAP1 * cell - lipVb / 2;
-    const ry = bw - GAP1 * cell - lipVb / 2;
-    const rw = n * cell + 2 * (GAP1 * cell + lipVb / 2);
-    const rh = n * cell + 2 * (GAP1 * cell + lipVb / 2);
-    if (rx > 0) {
+    const rx = ox + bw - gapVb - lipVb / 2;
+    const ry = bw - gapVb - lipVb / 2;
+    const rw = n * cell + 2 * (gapVb + lipVb / 2);
+    const rh = n * cell + 2 * (gapVb + lipVb / 2);
+    if (ry > 0) {
       parts.push(
         `<rect x="${rx.toFixed(2)}" y="${ry.toFixed(2)}" width="${rw.toFixed(2)}" height="${rh.toFixed(2)}" ` +
         `fill="none" stroke="black" stroke-width="${lipVb.toFixed(2)}" opacity="0.35"/>`,
@@ -157,7 +162,7 @@ function renderQr(payload, ecc, moduleMm) {
   const labelText   = labelTextInput.value.trim();
   const textSizeMm  = parseFloat(document.getElementById("td-text-size")?.value || 2.5);
   const lipEnabled  = document.getElementById("td-lip-enable")?.checked ?? false;
-  const lipWMm      = parseFloat(document.getElementById("td-lip-width")?.value ?? 0.35);
+  const lipWMm      = parseFloat(document.getElementById("td-lip-width")?.value ?? 0.4);
 
   // Boolean matrix shared with 3D tab
   currentMatrix = Array.from({ length: n }, (_, row) =>
@@ -175,7 +180,7 @@ function renderQr(payload, ecc, moduleMm) {
 
   // Pass matrix + label info so threed.js can rebuild the 3D model
   document.dispatchEvent(new CustomEvent("qr-updated", {
-    detail: { matrix: currentMatrix, labelText, borderCells },
+    detail: { matrix: currentMatrix, labelText, borderCells, moduleMm },
   }));
 }
 
@@ -335,8 +340,8 @@ histStyle.textContent = `
   .hist-header {
     display: flex; align-items: center; justify-content: space-between;
     padding: 2px 0 4px;
-    font-size: var(--type-xs, 0.7rem);
-    text-transform: uppercase; letter-spacing: 0.05em;
+    font-size: var(--type-xs);
+    font-weight: 500;
     color: var(--strata-text-secondary);
   }
   .hist-clear {
@@ -360,7 +365,7 @@ histStyle.textContent = `
     font-size: var(--type-xs, 0.72rem);
     padding: 3px var(--space-1);
     color: var(--strata-text-secondary);
-    transition: color 120ms var(--ease-out-expo, ease), border-color 120ms var(--ease-out-expo, ease), background-color 120ms var(--ease-out-expo, ease);
+    transition: color var(--threshold-fast), border-color var(--threshold-fast), background-color var(--threshold-fast);
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     border-left: 2px solid var(--strata-border);
   }
@@ -478,4 +483,6 @@ document.getElementById("td-text-size")?.addEventListener("input",  update);
 
 loadSettings();
 renderHistory();
-setTimeout(update, 0);
+// Module scripts all run before DOMContentLoaded, so threed.js has registered
+// its qr-updated listener and restored its settings by then.
+document.addEventListener("DOMContentLoaded", update);
