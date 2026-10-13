@@ -1,7 +1,3 @@
----
-tags: [project, mnemosyne, readme]
----
-
 # Mnemosyne — Offline QR-to-STL Workshop
 
 **[Try it live](https://range-et.github.io/mnemosyne/)**

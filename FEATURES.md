@@ -1,7 +1,3 @@
----
-tags: [project, mnemosyne, features, fabrication, design-system]
----
-
 # Mnemosyne — Feature Roadmap
 
 Synthesized from Frontend Developer, Senior Developer, and UX Researcher analysis of the codebase and NorthStar vision. Features are grouped by priority tier, with UX rationale where it shapes the decision.
